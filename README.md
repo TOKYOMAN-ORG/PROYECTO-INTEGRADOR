@@ -9,6 +9,9 @@ Agenda de tiempo y productividad con arquitectura desacoplada: app móvil (Expo)
 | `docker/` | `docker-compose.yml` (PostgreSQL y Liquibase) y la imagen de Liquibase |
 | `liquibase/` | Changelog maestro y migraciones del esquema |
 | `docs/` | Guía oficial del proyecto |
+| `.github/` | Plantilla de Pull Request |
+
+Antes de abrir tu primera Pull Request lee [`CONTRIBUTING.md`](CONTRIBUTING.md): convención de ramas y commits, y firma de commits.
 
 ## Requisitos
 
