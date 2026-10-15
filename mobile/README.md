@@ -1,56 +1,61 @@
-# Welcome to your Expo app 👋
+# SecurePlan Mobile — App móvil
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+App Expo (SDK 57) con `expo-router` y TypeScript estricto. Forma parte del monorepo descrito en el [README de la raíz](../README.md), que explica cómo levantar la base de datos y el backend.
 
-## Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Arranque
 
 ```bash
-npm run reset-project
+cp .env.example .env     # revisa EXPO_PUBLIC_API_URL según tu emulador o dispositivo
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+`EXPO_PUBLIC_API_URL` es la **única** fuente de la URL del backend. Es pública (queda dentro del bundle): nunca pongas secretos en variables `EXPO_PUBLIC_*`.
 
-### Other setup steps
+## Comandos
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+| Comando | Para qué |
+|---|---|
+| `npx expo start` | Servidor de desarrollo (Expo Go, emulador o web). |
+| `npm run lint` | ESLint (`eslint-config-expo`). |
+| `npx tsc --noEmit` | Comprobación de tipos. |
+| `npm test` | Pruebas unitarias (`node:test`, archivos `*.test.ts`). |
 
-## Learn more
+## Estructura de `src/`
 
-To learn more about developing your project with Expo, look at the following resources:
+Cada carpeta tiene una única responsabilidad. Una carpeta vacía lleva un `.gitkeep`; bórralo al añadir el primer archivo.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+| Carpeta | Responsabilidad | No debe contener |
+|---|---|---|
+| `app/` | Solo rutas y layouts de `expo-router` (cada archivo es una pantalla). | Lógica de negocio, llamadas a la API, componentes reutilizables. |
+| `features/<módulo>/` | Todo lo propio de un módulo funcional: sus componentes, hooks y tipos. Hoy `features/auth/` (autenticación). | Código compartido entre módulos. |
+| `services/` | Comunicación con la API: `http-client.ts` (cliente base) y, sobre él, una función por endpoint. | Componentes, estado de UI, acceso al almacenamiento seguro. |
+| `storage/` | Persistencia local y segura (SecureStore para el JWT). | Llamadas a la API. |
+| `components/` | UI reutilizable y sin lógica de negocio (`themed-text`, `themed-view`). | Componentes de un solo módulo (van en su `features/`). |
+| `hooks/` | Hooks genéricos reutilizables (`use-theme`, `use-color-scheme`). | Hooks de un solo módulo. |
+| `constants/` | Valores constantes de la app (tema, espaciados). | URLs de la API ni secretos. |
+| `types/` | Tipos de TypeScript compartidos entre módulos. | Tipos de un solo módulo. |
 
-## Join the community
+El alias `@/` apunta a `src/` (`import { ThemedText } from '@/components/themed-text'`).
 
-Join our community of developers creating universal apps.
+## Cliente HTTP
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+`services/http-client.ts` exporta `request`, que usa `fetch`, lee la URL base de `process.env.EXPO_PUBLIC_API_URL`, aplica un timeout (10 s por defecto) y serializa el cuerpo como JSON. **Nunca rechaza con una excepción cruda**, solo con:
+
+| Error | Cuándo |
+|---|---|
+| `NetworkError` | Sin red, host inalcanzable, timeout o `EXPO_PUBLIC_API_URL` sin configurar. |
+| `ApiError` | Respuesta no 2xx (o 2xx con cuerpo ilegible). Trae `status` y `message` (el de NestJS cuando existe). |
+
+```ts
+import { ApiError, NetworkError, request } from '@/services/http-client';
+
+try {
+  const health = await request<{ status: string }>('/api/health'); // las rutas llevan el prefijo /api del backend
+} catch (error) {
+  if (error instanceof ApiError) { /* error.status, error.message */ }
+  else if (error instanceof NetworkError) { /* sin conexión o sin respuesta */ }
+}
+```
+
+Alcance actual: el cliente aún no adjunta el JWT; los interceptores de autenticación llegan en el Sprint 2.
