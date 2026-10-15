@@ -64,8 +64,15 @@ npm install
 npm run start:dev
 ```
 
-> El backend todavía no lee el `.env` (solo `PORT` desde el entorno del proceso). La configuración tipada de
-> `DB_*` y `JWT_*` se incorpora en la tarea «Estructurar módulos, configuración tipada y validación global».
+El backend lee el `.env` de la raíz del repositorio y valida **todas** las variables de la tabla siguiente
+al arrancar: si falta o está vacía alguna, el proceso termina con código 1 y el mensaje nombra cada variable
+afectada (nunca sus valores). Las variables ya definidas en el entorno del proceso tienen prioridad sobre el `.env`.
+
+Todas las rutas cuelgan del prefijo `/api`. Para comprobar que el servidor y la base responden:
+
+```bash
+curl -i http://localhost:3000/api/health   # 200 {"status":"ok"} con la base levantada; 503 si está caída
+```
 
 ### 5. Iniciar la app móvil
 
@@ -83,7 +90,7 @@ npx expo start
 | `DB_HOST` | `.env` | Host de la base para el backend (`localhost`). |
 | `DB_PORT` | `.env` | Puerto del host publicado por Docker (por defecto `5433`; cámbialo si está ocupado). |
 | `DB_NAME`, `DB_USER`, `DB_PASSWORD` | `.env` | Base, usuario y contraseña de PostgreSQL; Docker y Liquibase los toman de aquí. |
-| `PORT` | `.env` | Puerto HTTP del backend. |
+| `PORT` | `.env` | Puerto HTTP del backend (entero entre 1 y 65535). |
 | `JWT_SECRET`, `JWT_EXPIRES_IN` | `.env` | Firma y vigencia de los JWT. |
 | `EXPO_PUBLIC_API_URL` | `mobile/.env` | URL base del backend. **Es pública**: va dentro del bundle de la app, nunca pongas secretos. |
 
