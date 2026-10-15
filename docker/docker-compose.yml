@@ -1,0 +1,48 @@
+# Entorno local: PostgreSQL + Liquibase (único mecanismo de migraciones).
+# Las variables se leen del `.env` de la raíz; ver README.md para los comandos.
+name: secureplan
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:?Define DB_USER en .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
+      POSTGRES_DB: ${DB_NAME:?Define DB_NAME en .env}
+    ports:
+      # Solo accesible desde la propia máquina, nunca desde la red.
+      - "127.0.0.1:${DB_PORT:?Define DB_PORT en .env}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  liquibase:
+    build: ./liquibase
+    image: secureplan-liquibase:5.0.4
+    # Perfil opcional: `docker compose up` no ejecuta migraciones; solo `run liquibase <comando>`.
+    profiles: ["tools"]
+    depends_on:
+      db:
+        condition: service_healthy
+    working_dir: /liquibase/project
+    volumes:
+      - ../liquibase:/liquibase/project:ro
+    environment:
+      # Conexión por la red interna de Compose (puerto 5432 del contenedor, no DB_PORT).
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://db:5432/${DB_NAME:?Define DB_NAME en .env}
+      LIQUIBASE_COMMAND_USERNAME: ${DB_USER:?Define DB_USER en .env}
+      LIQUIBASE_COMMAND_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
+    # El entrypoint de la imagen impone su propio defaults-file; se indica el del proyecto de forma
+    # explícita. Va en `entrypoint` para que se conserve al ejecutar `run --rm liquibase <comando>`.
+    entrypoint:
+      - /liquibase/docker-entrypoint.sh
+      - --defaults-file=/liquibase/project/liquibase.properties
+    command: ["update"]
+
+volumes:
+  pgdata:

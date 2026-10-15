@@ -1,0 +1,7 @@
+# Changelog maestro. Cada migración nueva es un archivo YAML en `migrations/`
+# con prefijo numérico (p. ej. `001-create-users.yaml`); se aplican en orden alfabético.
+databaseChangeLog:
+  - includeAll:
+      path: migrations/
+      relativeToChangelogFile: true
+      errorIfMissingOrEmpty: false
