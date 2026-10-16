@@ -1,0 +1,55 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-users
+      author: secureplan
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              # Único dato relacionado con contraseñas: solo guarda el hash Argon2id, nunca el texto plano.
+              - column:
+                  name: password_hash
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        # Unicidad sin distinguir mayúsculas: Ana@x.com y ana@x.com son el mismo correo.
+        - createIndex:
+            tableName: users
+            indexName: users_email_lower_uq
+            unique: true
+            columns:
+              - column:
+                  name: lower(email)
+                  computed: true
+      rollback:
+        - dropTable:
+            tableName: users

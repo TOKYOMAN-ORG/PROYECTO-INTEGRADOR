@@ -13,11 +13,14 @@ export class NetworkError extends Error {
 /** La API respondió con un estado no 2xx (o con un cuerpo ilegible). */
 export class ApiError extends Error {
   readonly status: number;
+  /** Cuerpo JSON de la respuesta (p. ej. `errors` por campo del backend); `undefined` si no era JSON. */
+  readonly body: unknown;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, body?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.body = body;
   }
 }
 
@@ -82,7 +85,7 @@ export async function request<T = unknown>(path: string, options: RequestOptions
   }
 
   if (!response.ok) {
-    throw new ApiError(response.status, messageFrom(data, `Error ${response.status} de la API`));
+    throw new ApiError(response.status, messageFrom(data, `Error ${response.status} de la API`), data);
   }
   if (unreadable) throw new ApiError(response.status, 'Respuesta de la API no válida');
   return data as T;
