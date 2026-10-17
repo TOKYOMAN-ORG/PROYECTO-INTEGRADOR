@@ -1,0 +1,18 @@
+# Variables de entorno: nunca se versionan, excepto las plantillas .env.example
+.env
+.env.*
+!.env.example
+
+# Claves y certificados privados
+*.pem
+*.key
+*.p12
+*.jks
+
+# OS
+.DS_Store
+Thumbs.db
+
+
+/docs
+
