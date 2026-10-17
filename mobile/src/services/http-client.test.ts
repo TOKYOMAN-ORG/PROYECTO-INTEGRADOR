@@ -112,6 +112,16 @@ describe('request: respuestas no 2xx', () => {
     assert.equal(error.message, 'email must be an email. password too short');
   });
 
+  it('ApiError conserva el cuerpo JSON de la respuesta (errores por campo)', async () => {
+    const body = { message: ['email must be an email'], errors: { email: ['email must be an email'] } };
+    mockFetch(async () => json(body, 400));
+
+    const error = await failure(request('/api/auth/register'));
+
+    assert.ok(error instanceof ApiError);
+    assert.deepEqual(error.body, body);
+  });
+
   it('5xx sin JSON usa un mensaje genérico con el status', async () => {
     mockFetch(async () => new Response('<html>Bad gateway</html>', { status: 502 }));
 

@@ -78,5 +78,24 @@ describe('configureApp (e2e)', () => {
         .send({ name: 42 })
         .expect(400);
     });
+
+    it('agrupa los mensajes por campo en `errors` y conserva la lista plana en `message`', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/api/items')
+        .send({ name: 42, role: 'admin' })
+        .expect(400);
+
+      expect(response.body.errors).toEqual({
+        name: ['name must be a string'],
+        role: ['property role should not exist'],
+      });
+      expect(response.body.message).toHaveLength(2);
+      expect(response.body.message).toEqual(
+        expect.arrayContaining([
+          'name must be a string',
+          'property role should not exist',
+        ]),
+      );
+    });
   });
 });

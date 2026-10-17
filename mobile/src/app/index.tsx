@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,6 +12,9 @@ export default function HomeScreen() {
         <ThemedText type="title" style={styles.title}>
           SecurePlan Mobile
         </ThemedText>
+        <Link href="/register">
+          <ThemedText type="linkPrimary">Crear cuenta</ThemedText>
+        </Link>
       </SafeAreaView>
     </ThemedView>
   );
