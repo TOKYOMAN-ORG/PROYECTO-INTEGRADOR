@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Spacing } from '@/constants/theme';
 
 export default function HomeScreen() {
   return (
@@ -12,6 +13,9 @@ export default function HomeScreen() {
         <ThemedText type="title" style={styles.title}>
           SecurePlan Mobile
         </ThemedText>
+        <Link href="/login">
+          <ThemedText type="linkPrimary">Iniciar sesión</ThemedText>
+        </Link>
         <Link href="/register">
           <ThemedText type="linkPrimary">Crear cuenta</ThemedText>
         </Link>
@@ -28,6 +32,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: Spacing.three,
   },
   title: {
     textAlign: 'center',

@@ -13,6 +13,7 @@ describe('UsersService', () => {
   const repository = {
     insert: vi.fn(),
     findByEmail: vi.fn(),
+    findCredentialsByEmail: vi.fn(),
     findById: vi.fn(),
   };
   const passwords = new PasswordService();
@@ -83,6 +84,67 @@ describe('UsersService', () => {
           password: 'Secreta123',
         }),
       ).rejects.toBe(failure);
+    });
+  });
+
+  describe('authenticate', () => {
+    let passwordHash: string;
+    beforeAll(async () => {
+      passwordHash = await passwords.hash('Secreta123');
+    });
+
+    it('devuelve solo id, name y email cuando el correo y la contraseña coinciden', async () => {
+      repository.findCredentialsByEmail.mockResolvedValue({
+        ...stored,
+        passwordHash,
+      });
+
+      const user = await service.authenticate('ANA@Mail.com', 'Secreta123');
+
+      expect(user).toEqual(stored);
+      expect(JSON.stringify(user)).not.toContain('argon2');
+      expect(repository.findCredentialsByEmail).toHaveBeenCalledWith(
+        'ana@mail.com',
+      );
+    });
+
+    it('devuelve undefined con una contraseña incorrecta', async () => {
+      repository.findCredentialsByEmail.mockResolvedValue({
+        ...stored,
+        passwordHash,
+      });
+
+      await expect(
+        service.authenticate('ana@mail.com', 'OtraClave123'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('con un correo inexistente devuelve undefined pero verifica igualmente contra un hash Argon2id ficticio', async () => {
+      repository.findCredentialsByEmail.mockResolvedValue(undefined);
+      const verify = vi.spyOn(passwords, 'verify');
+
+      await expect(
+        service.authenticate('nadie@mail.com', 'Secreta123'),
+      ).resolves.toBeUndefined();
+
+      expect(verify).toHaveBeenCalledTimes(1);
+      expect(verify.mock.calls[0][1]).toMatch(/^\$argon2id\$/);
+      verify.mockRestore();
+    });
+
+    it('calcula el hash ficticio una sola vez aunque haya varios correos inexistentes', async () => {
+      const fresh = new UsersService(
+        repository as unknown as UsersRepository,
+        passwords,
+      );
+      repository.findCredentialsByEmail.mockResolvedValue(undefined);
+      const hash = vi.spyOn(passwords, 'hash');
+
+      await fresh.authenticate('a@mail.com', 'Secreta123');
+      await fresh.authenticate('b@mail.com', 'Secreta123');
+
+      expect(hash).toHaveBeenCalledTimes(1);
+      hash.mockRestore();
     });
   });
 

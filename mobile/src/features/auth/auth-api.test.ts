@@ -1,14 +1,33 @@
 import assert from 'node:assert/strict';
-import { afterEach, beforeEach, describe, it } from 'node:test';
+import { afterEach, beforeEach, describe, it, mock } from 'node:test';
 
 import { ApiError, NetworkError } from '../../services/http-client.ts';
-import { describeRegisterError, register } from './auth-api.ts';
+
+// `auth-api` importa el almacén seguro, que importa `expo-secure-store` (no se puede cargar en Node): se sustituye
+// por un almacén en memoria antes de cargar `auth-api`.
+const items = new Map<string, string>();
+let storeFails = false;
+
+mock.module('expo-secure-store', {
+  exports: {
+    setItemAsync: async (key: string, value: string) => {
+      if (storeFails) throw new Error('almacén no disponible');
+      items.set(key, value);
+    },
+    getItemAsync: async (key: string) => items.get(key) ?? null,
+    deleteItemAsync: async (key: string) => void items.delete(key),
+  },
+});
+
+const { describeLoginError, describeRegisterError, login, register } = await import('./auth-api.ts');
 
 const realFetch = globalThis.fetch;
 const realApiUrl = process.env.EXPO_PUBLIC_API_URL;
 
 beforeEach(() => {
   process.env.EXPO_PUBLIC_API_URL = 'http://api.test';
+  items.clear();
+  storeFails = false;
 });
 
 afterEach(() => {
@@ -81,6 +100,110 @@ describe('describeRegisterError', () => {
 
       assert.equal(failure.message, 'Ocurrió un error inesperado. Inténtalo de nuevo más tarde.');
       assert.deepEqual(failure.fields, {});
+    }
+  });
+});
+
+describe('login', () => {
+  const credentials = { email: 'ana@mail.com', password: 'Secreta123' };
+  const TOKEN = 'header.payload.firma';
+
+  const respondWith = (status: number, body: unknown) => {
+    const calls: { url: string; init: RequestInit }[] = [];
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return new Response(JSON.stringify(body), { status });
+    }) as unknown as typeof fetch;
+    return calls;
+  };
+
+  it('hace POST /api/auth/login con el cuerpo en JSON y guarda el token en el almacén seguro', async () => {
+    const calls = respondWith(200, { accessToken: TOKEN });
+
+    await login(credentials);
+
+    assert.equal(calls[0].url, 'http://api.test/api/auth/login');
+    assert.equal(calls[0].init.method, 'POST');
+    assert.equal(calls[0].init.body, '{"email":"ana@mail.com","password":"Secreta123"}');
+    assert.deepEqual([...items.values()], [TOKEN]);
+  });
+
+  it('no devuelve el token, no lo envía en la URL ni lo escribe en la consola', async () => {
+    const calls = respondWith(200, { accessToken: TOKEN });
+    const logged: unknown[][] = [];
+    const spies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((method) =>
+      mock.method(console, method, (...args: unknown[]) => void logged.push(args)),
+    );
+
+    const result = await login(credentials);
+    spies.forEach((spy) => spy.mock.restore());
+
+    assert.equal(result, undefined);
+    assert.ok(!calls[0].url.includes(TOKEN));
+    assert.deepEqual(logged, []);
+  });
+
+  it('con credenciales inválidas rechaza con ApiError 401 y no guarda ningún token', async () => {
+    respondWith(401, { statusCode: 401, message: 'Credenciales inválidas' });
+
+    await assert.rejects(login(credentials), (error: unknown) => {
+      assert.ok(error instanceof ApiError);
+      assert.equal(error.status, 401);
+      return true;
+    });
+    assert.equal(items.size, 0);
+  });
+
+  it('con la API apagada rechaza con NetworkError y no guarda ningún token', async () => {
+    globalThis.fetch = (async () => {
+      throw new TypeError('Network request failed');
+    }) as unknown as typeof fetch;
+
+    await assert.rejects(login(credentials), NetworkError);
+    assert.equal(items.size, 0);
+  });
+
+  it('si el almacén seguro falla, rechaza sin incluir el token en el error', async () => {
+    respondWith(200, { accessToken: TOKEN });
+    storeFails = true;
+
+    await assert.rejects(login(credentials), (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.ok(!error.message.includes(TOKEN));
+      return true;
+    });
+    assert.equal(items.size, 0);
+  });
+
+  it('una respuesta 200 sin un accessToken de texto no guarda nada y rechaza', async () => {
+    for (const body of [{}, { accessToken: '' }, { accessToken: 123 }, null]) {
+      respondWith(200, body);
+
+      await assert.rejects(login(credentials), ApiError);
+      assert.equal(items.size, 0);
+    }
+  });
+});
+
+describe('describeLoginError', () => {
+  it('401: "Credenciales inválidas"', () => {
+    assert.equal(describeLoginError(new ApiError(401, 'Credenciales inválidas')), 'Credenciales inválidas');
+  });
+
+  it('400: muestra el mensaje del servidor', () => {
+    assert.equal(
+      describeLoginError(new ApiError(400, 'La contraseña no puede superar 128 caracteres')),
+      'La contraseña no puede superar 128 caracteres',
+    );
+  });
+
+  it('error de red: mensaje de conexión', () => {
+    assert.match(describeLoginError(new NetworkError('No se pudo conectar con la API')), /conectar con el servidor/);
+  });
+
+  it('5xx y errores desconocidos: mensaje genérico que no expone el detalle', () => {
+    for (const error of [new ApiError(500, 'Internal server error'), new Error('boom'), 'x']) {
+      assert.equal(describeLoginError(error), 'Ocurrió un error inesperado. Inténtalo de nuevo más tarde.');
     }
   });
 });

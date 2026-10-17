@@ -20,6 +20,15 @@ const PASSWORD_MAX = 128;
 // Comprobación básica de forma; el backend (`IsEmail`) sigue siendo la validación definitiva.
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** Mensaje de error del correo, o `undefined` si es válido. Compartido por los formularios de Registro y de Login. */
+export function validateEmail(value: string): string | undefined {
+  const email = value.trim();
+  if (!email) return 'El correo es obligatorio';
+  if (!EMAIL_PATTERN.test(email) || email.length > EMAIL_MAX) {
+    return 'El correo no tiene un formato válido';
+  }
+}
+
 export function validateRegister(values: RegisterValues): RegisterFormErrors {
   const errors: RegisterFormErrors = {};
 
@@ -29,11 +38,8 @@ export function validateRegister(values: RegisterValues): RegisterFormErrors {
     errors.name = `El nombre debe tener entre ${NAME_MIN} y ${NAME_MAX} caracteres`;
   }
 
-  const email = values.email.trim();
-  if (!email) errors.email = 'El correo es obligatorio';
-  else if (!EMAIL_PATTERN.test(email) || email.length > EMAIL_MAX) {
-    errors.email = 'El correo no tiene un formato válido';
-  }
+  const emailError = validateEmail(values.email);
+  if (emailError) errors.email = emailError;
 
   if (!values.password) errors.password = 'La contraseña es obligatoria';
   else if (values.password.length < PASSWORD_MIN) {
