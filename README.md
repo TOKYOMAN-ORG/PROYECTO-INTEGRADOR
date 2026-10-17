@@ -74,6 +74,21 @@ Todas las rutas cuelgan del prefijo `/api`. Para comprobar que el servidor y la 
 curl -i http://localhost:3000/api/health   # 200 {"status":"ok"} con la base levantada; 503 si está caída
 ```
 
+Registro de usuario (`POST /api/auth/register`: nombre de 2 a 100 caracteres, correo válido y contraseña de 8 a 128):
+
+```bash
+curl -i -X POST http://localhost:3000/api/auth/register -H 'Content-Type: application/json' \
+  -d '{"name":"Ana","email":"ana@example.com","password":"Secreta123"}'
+```
+
+| Respuesta | Cuándo |
+|---|---|
+| `201` con `{ id, name, email }` | Usuario creado; nunca incluye la contraseña ni su hash. |
+| `400` con `errors` por campo | Datos inválidos o propiedades no permitidas (por ejemplo `role`). |
+| `409` | El correo ya está registrado (sin distinguir mayúsculas). |
+
+La contraseña solo se guarda como hash Argon2id (`$argon2id$…`) en `users.password_hash`.
+
 ### 5. Iniciar la app móvil
 
 ```bash
