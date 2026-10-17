@@ -63,6 +63,26 @@ describe('UsersRepository', () => {
     );
   });
 
+  it('findCredentialsByEmail devuelve el hash junto al usuario, consultando por parámetro', async () => {
+    const credentials = { ...user, passwordHash: '$argon2id$hash' };
+    query
+      .mockResolvedValueOnce({ rows: [credentials] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    await expect(
+      repository.findCredentialsByEmail("x'; DROP TABLE users; --"),
+    ).resolves.toEqual(credentials);
+    await expect(
+      repository.findCredentialsByEmail('nadie@mail.com'),
+    ).resolves.toBeUndefined();
+
+    const [text, params] = query.mock.calls[0];
+    expect(text).toContain('password_hash AS "passwordHash"');
+    expect(text).toContain('lower(email) = $1');
+    expect(text).not.toContain('DROP TABLE');
+    expect(params).toEqual(["x'; DROP TABLE users; --"]);
+  });
+
   it('ninguna consulta selecciona password_hash ni interpola valores en el texto', async () => {
     query.mockResolvedValue({ rows: [] });
 

@@ -89,6 +89,24 @@ curl -i -X POST http://localhost:3000/api/auth/register -H 'Content-Type: applic
 
 La contraseña solo se guarda como hash Argon2id (`$argon2id$…`) en `users.password_hash`.
 
+Inicio de sesión (`POST /api/auth/login`) y comprobación del token (`GET /api/auth/me`):
+
+```bash
+curl -i -X POST http://localhost:3000/api/auth/login -H 'Content-Type: application/json' \
+  -d '{"email":"ana@example.com","password":"Secreta123"}'
+curl -i http://localhost:3000/api/auth/me -H 'Authorization: Bearer <accessToken>'
+```
+
+| Respuesta | Cuándo |
+|---|---|
+| `200` con `{ accessToken }` (login) | JWT HS256 firmado con `JWT_SECRET`, con `sub` (id del usuario) y `exp` (`JWT_EXPIRES_IN`); sin correo ni otros datos. |
+| `200` con `{ id, name, email }` (me) | Token válido de un usuario que sigue existiendo. |
+| `400` con `errors` por campo | Correo mal formado, campos ausentes o propiedades no permitidas. |
+| `401` | Login: correo inexistente o contraseña incorrecta, con el mismo mensaje `Credenciales inválidas`. Me: sin cabecera, token alterado, expirado o usuario eliminado. |
+
+Para proteger otra ruta basta `@UseGuards(JwtAuthGuard)` (`backend/src/auth/jwt-auth.guard.ts`); el módulo que la declare
+debe importar `AuthModule`. En la app, el token se guarda solo en Expo SecureStore (`mobile/src/storage/secure-token-storage.ts`).
+
 ### 5. Iniciar la app móvil
 
 ```bash

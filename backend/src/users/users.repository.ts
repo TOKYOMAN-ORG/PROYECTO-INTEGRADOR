@@ -9,7 +9,10 @@ export interface NewUserRecord {
   passwordHash: string;
 }
 
-/** Acceso a la tabla `users`. Solo consultas parametrizadas; ninguna selecciona `password_hash`. */
+/** Usuario con su hash: solo para verificar el inicio de sesión, no sale de la capa de usuarios. */
+export type UserCredentials = User & { passwordHash: string };
+
+/** Acceso a la tabla `users`. Solo consultas parametrizadas; solo `findCredentialsByEmail` selecciona `password_hash`. */
 @Injectable()
 export class UsersRepository {
   constructor(private readonly database: DatabaseConnection) {}
@@ -25,6 +28,16 @@ export class UsersRepository {
   async findByEmail(email: string): Promise<User | undefined> {
     const { rows } = await this.database.query<User>(
       'SELECT id, name, email FROM users WHERE lower(email) = $1',
+      [email],
+    );
+    return rows[0];
+  }
+
+  async findCredentialsByEmail(
+    email: string,
+  ): Promise<UserCredentials | undefined> {
+    const { rows } = await this.database.query<UserCredentials>(
+      'SELECT id, name, email, password_hash AS "passwordHash" FROM users WHERE lower(email) = $1',
       [email],
     );
     return rows[0];
