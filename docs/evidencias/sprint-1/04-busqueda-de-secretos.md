@@ -1,10 +1,17 @@
 # 04 · Búsqueda de secretos en el repositorio (criterio 4)
 
 **Objetivo:** comprobar que no hay contraseñas ni claves reales versionadas y que `.env` no está
-trackeado.
+trackeado — **ni en el árbol de trabajo ni en el historial**.
 
-**Método:** `git grep` sobre **solo archivos trackeados** (lo que se sube a GitHub), en la rama de la
-verificación.
+**Método:** `git grep` sobre **solo archivos trackeados** (lo que se sube a GitHub). La
+verificación se ejecutó en dos ámbitos:
+
+1. el **árbol de trabajo actual** (rama `develop`), y
+2. **todo el historial**, commit a commit con `git rev-list --all` (todas las ramas, locales y
+   remotas).
+
+No hay `gitleaks` instalado en la máquina; el criterio del ticket admite explícitamente
+`git grep` como herramienta de barrido.
 
 ## Resultados
 
@@ -55,17 +62,62 @@ mobile/src/features/auth/*.test.ts                 password: 'Secreta123' (petic
 Son valores inventados dentro de pruebas (no corresponden a ningún servicio real) → ✅ sin
 credenciales reales.
 
-### 4.4 Contraseña de la cuenta local de pruebas
+### 4.4 Contraseña de la cuenta local de pruebas (árbol de trabajo, verificación original)
 
 ```text
-$ git grep -n "Segura123"
-(sin coincidencias)   → ✅ la contraseña de la cuenta local no aparece en el repo
+$ git grep -n "<contraseña-demo-local>"      ← literal enmascarado; ver 4.6
+(sin coincidencias)   → ✅ la contraseña no aparece en el código fuente
 ```
+
+### 4.5 Barrido del historial completo (todas las ramas)
+
+Además del árbol de trabajo, los patrones de la sección 4.2 se aplicaron a **cada commit de todas
+las ramas**:
+
+```text
+$ for c in $(git rev-list --all); do
+>     git grep -IE "AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36}|-----BEGIN [A-Z ]*PRIVATE KEY-----|xox[baprs]-|sk-[A-Za-z0-9]{20,}" "$c"
+>   done | sort -u
+(sin coincidencias)   → ✅ ningún secreto de servicios en NINGÚN commit de ninguna rama
+```
+
+Y comprobando que ningún `.env` haya sido trackeado jamás en la historia:
+
+```text
+$ git log --all --oneline -- backend/.env mobile/.env .env
+(sin resultados)
+
+$ git log --all --diff-filter=A --name-only --pretty=format: | grep -E '(^|/)\.env$'
+(sin resultados)   → ✅ ningún .env fue versionado en ningún commit de la historia
+```
+
+### 4.6 Hallazgo: la contraseña demo local quedó citada en las propias evidencias
+
+El barrido del historial con el literal de la contraseña local de pruebas encontró coincidencias
+**únicamente dentro de los documentos de este directorio** (la transcripción del caso de inyección
+SQL de `02-casos-postman.md` y la referencia al comando de búsqueda). Es la contraseña de las
+cuentas locales de desarrollo de Docker — no corresponde a ningún servicio, servidor ni usuario
+real — pero, siguiendo la regla del criterio ("si aparece una contraseña o credencial real, se
+deja de publicar y se registra un hallazgo"):
+
+1. Se **enmascaró** el literal en la versión actual de los documentos: el árbol de trabajo ya no lo
+   contiene (verificable con `git grep`).
+2. Se registró el hallazgo como **ticket de tipo Error: SCRUM-56** (prioridad baja, alcance
+   local), dejando constancia trazable.
+3. **No se reescribe el historial**: los commits firmados ya publicados contienen la cita y
+   reescribir la historia de un repositorio compartido (invalidando sus firmas) es un riesgo mayor
+   que la exposición de una contraseña demo local. La mitigación correcta, si el repositorio
+   llegara a ser público o las credenciales se reutilizaran fuera de lo local, sería **rotar la
+   contraseña** de las cuentas afectadas, no borrar el historial.
 
 ## Conclusión
 
-- ✅ `.env` y `mobile/.env` **no** están versionados (solo `.env.example` con placeholders).
-- ✅ Sin claves privadas, tokens de servicios ni URLs con credenciales.
-- ✅ Los únicos literales de "contraseña" son datos falsos de pruebas unitarias/e2e.
-- Recordatorio operativo (del propio `.env.example`): generar `JWT_SECRET` propio y nunca versionarlo;
-  si un secreto llega a exponerse, rotarlo (no basta con borrarlo del historial).
+- ✅ `.env` y `mobile/.env` **no** están versionados (solo `.env.example` con placeholders), ni en
+  el árbol actual ni en **ningún commit del historial**.
+- ✅ Sin claves privadas, tokens de servicios ni URLs con credenciales: **0 coincidencias** en el
+  árbol y en todos los commits de todas las ramas.
+- ✅ Los únicos literales de "contraseña" en el código son datos falsos de pruebas unitarias/e2e.
+- ⚠️ **Hallazgo menor registrado (SCRUM-56):** la contraseña demo local citada en la propia
+  evidencia; ya enmascarada en el árbol actual y justificada en 4.6.
+- Recordatorio operativo (del propio `.env.example`): generar `JWT_SECRET` propio y nunca
+  versionarlo; si un secreto llega a exponerse, rotarlo (no basta con borrarlo del historial).

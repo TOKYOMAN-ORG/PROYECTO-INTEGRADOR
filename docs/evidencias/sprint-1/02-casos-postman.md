@@ -59,7 +59,7 @@ HTTP 400
 "errors":{"email":["El correo no tiene un formato válido"]}}
 
 CASO 4b: Inyección SQL en el correo del registro
-POST /api/auth/register  {"name":"Atacante","email":"' OR 1=1;--","password":"Segura123"}
+POST /api/auth/register  {"name":"Atacante","email":"' OR 1=1;--","password":"<contraseña-demo>"}
 HTTP 400
 {"statusCode":400,"error":"Bad Request","message":["El correo no tiene un formato válido"],
 "errors":{"email":["El correo no tiene un formato válido"]}}
