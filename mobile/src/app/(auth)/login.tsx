@@ -1,4 +1,4 @@
-import { Link, useLocalSearchParams, useRouter } from 'expo-router';
+import { Link, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,7 +8,8 @@ import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { describeLoginError, login } from '@/features/auth/auth-api';
+import { describeLoginError } from '@/features/auth/auth-api';
+import { useAuth } from '@/features/auth/auth-context';
 import {
   validateLogin,
   type LoginField,
@@ -19,7 +20,7 @@ import {
 const EMPTY_VALUES: LoginValues = { email: '', password: '' };
 
 export default function LoginScreen() {
-  const router = useRouter();
+  const { signInWithCredentials } = useAuth();
   const { registered } = useLocalSearchParams<{ registered?: string }>();
   const [values, setValues] = useState(EMPTY_VALUES);
   const [errors, setErrors] = useState<LoginFormErrors>({});
@@ -41,9 +42,9 @@ export default function LoginScreen() {
 
     setSubmitting(true);
     try {
-      await login({ email: values.email.trim(), password: values.password });
-      // La pila privada `(app)` llega con SCRUM-29; hasta entonces la pantalla de inicio es el destino.
-      router.replace('/');
+      // El token lo persiste y valida el AuthProvider; al autenticarse, el guard del root layout
+      // redirige solo a la pila privada `(app)`, sin navegación manual desde la pantalla.
+      await signInWithCredentials({ email: values.email.trim(), password: values.password });
     } catch (error) {
       setFormError(describeLoginError(error));
     } finally {

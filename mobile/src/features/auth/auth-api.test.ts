@@ -19,7 +19,8 @@ mock.module('expo-secure-store', {
   },
 });
 
-const { describeLoginError, describeRegisterError, login, register } = await import('./auth-api.ts');
+const { classifyRestoreError, describeLoginError, describeRegisterError, getMe, login, register } =
+  await import('./auth-api.ts');
 
 const realFetch = globalThis.fetch;
 const realApiUrl = process.env.EXPO_PUBLIC_API_URL;
@@ -204,6 +205,63 @@ describe('describeLoginError', () => {
   it('5xx y errores desconocidos: mensaje genérico que no expone el detalle', () => {
     for (const error of [new ApiError(500, 'Internal server error'), new Error('boom'), 'x']) {
       assert.equal(describeLoginError(error), 'Ocurrió un error inesperado. Inténtalo de nuevo más tarde.');
+    }
+  });
+});
+
+describe('getMe', () => {
+  const TOKEN = 'header.payload.firma';
+
+  it('hace GET /api/auth/me con Authorization: Bearer y devuelve el usuario', async () => {
+    const calls: { url: string; init: RequestInit }[] = [];
+    const user = { id: 'u1', name: 'Ana', email: 'ana@mail.com' };
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return new Response(JSON.stringify(user), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const me = await getMe(TOKEN);
+
+    assert.deepEqual(me, user);
+    assert.equal(calls[0].url, 'http://api.test/api/auth/me');
+    assert.equal(calls[0].init.method, 'GET');
+    assert.equal((calls[0].init.headers as Record<string, string>).Authorization, `Bearer ${TOKEN}`);
+  });
+
+  it('con token inválido el backend responde 401 y se propaga como ApiError', async () => {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ statusCode: 401, message: 'No autorizado' }), {
+        status: 401,
+      })) as unknown as typeof fetch;
+
+    await assert.rejects(getMe('malformado'), (error: unknown) => {
+      assert.ok(error instanceof ApiError);
+      assert.equal(error.status, 401);
+      return true;
+    });
+  });
+
+  it('con la API apagada rechaza con NetworkError', async () => {
+    globalThis.fetch = (async () => {
+      throw new TypeError('Network request failed');
+    }) as unknown as typeof fetch;
+
+    await assert.rejects(getMe(TOKEN), NetworkError);
+  });
+});
+
+describe('classifyRestoreError', () => {
+  it('401 → invalid: el token ya no sirve y debe borrarse', () => {
+    assert.equal(classifyRestoreError(new ApiError(401, 'No autorizado')), 'invalid');
+  });
+
+  it('error de red → offline: se conserva el token y se ofrece reintento', () => {
+    assert.equal(classifyRestoreError(new NetworkError('No se pudo conectar con la API')), 'offline');
+  });
+
+  it('5xx u otros errores → unknown: no se cierra la sesión por un fallo transitorio', () => {
+    for (const error of [new ApiError(500, 'Internal server error'), new Error('boom'), 'x']) {
+      assert.equal(classifyRestoreError(error), 'unknown');
     }
   });
 });
