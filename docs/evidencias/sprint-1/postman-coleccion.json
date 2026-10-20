@@ -1,0 +1,278 @@
+{
+  "info": {
+    "name": "SecurePlan — SCRUM-9: casos de seguridad (Sprint 1)",
+    "description": "Colección de peticiones anómalas contra la API local para verificar los criterios de codificación segura del Sprint 1 (SCRUM-9).\n\nRequisitos:\n1. Backend en ejecución en http://localhost:3001 (o ajusta la variable `base_url`).\n2. Crea tu propia cuenta de prueba con POST /auth/register y define `test_email` / `test_password`.\n\nLos tokens 'alterado' y 'expirado' incluidos son desechables y no autentican. Ningún caso debe responder 5xx.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3001/api", "type": "string" },
+    { "key": "test_email", "value": "<correo-de-tu-cuenta-de-prueba>", "type": "string" },
+    { "key": "test_password", "value": "<contraseña-de-tu-cuenta-de-prueba>", "type": "string" },
+    { "key": "token_expirado", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzZTEyY2ZjMy00ZDExLTRjYTUtYmVlOC01MDJiNDhmOTc2MGUiLCJpYXQiOjE3OTI1MjUzNDUsImV4cCI6MTc5MjUxNzQ1fQ.D1n5pamv-BIs5w9Hq3YgQdd9uie9qpEvGQ7Fg8ijgvw", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "0. Login (obtener token válido) → 200",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] },
+        "description": "Caso feliz (referencia). Devuelve `{ \"accessToken\": \"…\" }`."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+              "pm.test('Devuelve un accessToken', () => pm.expect(pm.response.json().accessToken).to.be.a('string'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Registro con correo duplicado → 409",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Otro Usuario\",\n  \"email\": \"{{test_email}}\",\n  \"password\": \"OtraClave123\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{base_url}}/auth/register", "host": ["{{base_url}}"], "path": ["auth", "register"] },
+        "description": "Criterio SCRUM-9: correo ya registrado → 409 Conflict."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 409 Conflict', () => pm.response.to.have.status(409));",
+              "pm.test('Nunca 5xx', () => pm.expect(pm.response.code).to.be.below(500));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Registro con cuerpo vacío → 400",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{}", "options": { "raw": { "language": "json" } } },
+        "url": { "raw": "{{base_url}}/auth/register", "host": ["{{base_url}}"], "path": ["auth", "register"] },
+        "description": "Criterio SCRUM-9: cuerpo vacío → 400 con errores por campo."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+              "pm.test('Detalla los errores por campo', () => pm.expect(pm.response.json().errors).to.be.an('object'));",
+              "pm.test('Nunca 5xx', () => pm.expect(pm.response.code).to.be.below(500));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Login con cuerpo vacío → 400",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{}", "options": { "raw": { "language": "json" } } },
+        "url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] },
+        "description": "Criterio SCRUM-9: cuerpo vacío en login → 400."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+              "pm.test('Nunca 5xx', () => pm.expect(pm.response.code).to.be.below(500));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Login con credenciales inválidas → 401 genérico",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{test_email}}\",\n  \"password\": \"NoEsLaClave99\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] },
+        "description": "Criterio SCRUM-9: 401 genérico «Credenciales inválidas», sin revelar si el correo existe."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 401', () => pm.response.to.have.status(401));",
+              "pm.test('Mensaje genérico (no filtra si el correo existe)', () => pm.expect(pm.response.text()).to.include('Credenciales inválidas'));",
+              "pm.test('Nunca 5xx', () => pm.expect(pm.response.code).to.be.below(500));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Inyección SQL en el correo → 400 (no autentica)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"' OR 1=1;--\",\n  \"password\": \"x\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] },
+        "description": "Criterio SCRUM-9: la inyección no autentica. Bloqueada en dos capas: validación del DTO (@IsEmail) y consultas parametrizadas ($1) en UsersRepository."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 400 (validación) y no autentica', () => pm.response.to.have.status(400));",
+              "pm.test('No devuelve ningún token', () => pm.expect(pm.response.json().accessToken).to.be.undefined);",
+              "pm.test('Nunca 5xx', () => pm.expect(pm.response.code).to.be.below(500));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Token alterado → 401",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token_alterado}}" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": { "raw": "{{base_url}}/auth/me", "host": ["{{base_url}}"], "path": ["auth", "me"] },
+        "description": "Criterio SCRUM-9: token con un carácter de la firma cambiado → 401. El Pre-request Script obtiene un token real con {{test_email}}/{{test_password}} y muta su último carácter."
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const base = pm.collectionVariables.get('base_url');",
+              "pm.sendRequest({",
+              "  url: base + '/auth/login',",
+              "  method: 'POST',",
+              "  header: { 'Content-Type': 'application/json' },",
+              "  body: { mode: 'raw', raw: JSON.stringify({ email: pm.collectionVariables.get('test_email'), password: pm.collectionVariables.get('test_password') }) }",
+              "}, (err, res) => {",
+              "  const t = res.json().accessToken;",
+              "  const last = t.slice(-1);",
+              "  pm.collectionVariables.set('token_alterado', t.slice(0, -1) + (last === 'x' ? 'Q' : 'x'));",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 401', () => pm.response.to.have.status(401));",
+              "pm.test('Nunca 5xx', () => pm.expect(pm.response.code).to.be.below(500));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Token expirado → 401",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token_expirado}}" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": { "raw": "{{base_url}}/auth/me", "host": ["{{base_url}}"], "path": ["auth", "me"] },
+        "description": "Criterio SCRUM-9: JWT firmado con el secreto local pero con `exp` en el pasado (desechable; generado con jsonwebtoken). Si cambias el JWT_SECRET local, genera uno nuevo: node -e \"const j=require('jsonwebtoken');console.log(j.sign({sub:'<id>'},process.env.JWT_SECRET,{expiresIn:-3600}))\""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 401', () => pm.response.to.have.status(401));",
+              "pm.test('Nunca 5xx', () => pm.expect(pm.response.code).to.be.below(500));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. GET /me sin token (extra) → 401",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/auth/me", "host": ["{{base_url}}"], "path": ["auth", "me"] },
+        "description": "Extra: sin cabecera Authorization el guard responde 401."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 401', () => pm.response.to.have.status(401));",
+              "pm.test('Nunca 5xx', () => pm.expect(pm.response.code).to.be.below(500));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Token firmado con otro secreto (extra) → 401",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xxxxxxxxxxxxxxxxxxxx.firmado-con-otro-secreto" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": { "raw": "{{base_url}}/auth/me", "host": ["{{base_url}}"], "path": ["auth", "me"] },
+        "description": "Extra: estructura de JWT válida pero firma desconocida → 401."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 401', () => pm.response.to.have.status(401));",
+              "pm.test('Nunca 5xx', () => pm.expect(pm.response.code).to.be.below(500));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ]
+}
