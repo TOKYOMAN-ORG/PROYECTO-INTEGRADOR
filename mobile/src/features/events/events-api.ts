@@ -56,6 +56,15 @@ export async function updateEvent(
   });
 }
 
+export async function deleteEvent(id: string, token: string): Promise<void> {
+  if (!token) throw new ApiError(401, 'No hay token de sesión');
+  await request<void>(`/api/events/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+
 
 export type CreateEventFailure = {
   fields: CreateEventFormErrors;

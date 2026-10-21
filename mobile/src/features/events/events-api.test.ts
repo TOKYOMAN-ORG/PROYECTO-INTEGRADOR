@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 import { ApiError, NetworkError } from '../../services/http-client.ts';
 import {
   createEvent,
+  deleteEvent,
   describeCreateEventError,
   getEvents,
   updateEvent,
@@ -178,3 +179,30 @@ describe('updateEvent', () => {
     );
   });
 });
+
+describe('deleteEvent', () => {
+  it('envía DELETE /api/events/:id con cabecera Authorization', async () => {
+    const calls: { url: string; init: RequestInit }[] = [];
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return new Response(null, { status: 204 });
+    }) as unknown as typeof fetch;
+
+    await deleteEvent('ev-1', 'mock-jwt-token');
+
+    assert.equal(calls[0].url, 'http://api.test/api/events/ev-1');
+    assert.equal(calls[0].init.method, 'DELETE');
+    assert.equal(
+      (calls[0].init.headers as Record<string, string>)?.Authorization,
+      'Bearer mock-jwt-token',
+    );
+  });
+
+  it('rechaza con ApiError 401 si no hay token', async () => {
+    await assert.rejects(
+      async () => deleteEvent('ev-1', ''),
+      (err: unknown) => err instanceof ApiError && err.status === 401,
+    );
+  });
+});
+

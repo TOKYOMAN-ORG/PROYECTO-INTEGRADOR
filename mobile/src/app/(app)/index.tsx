@@ -28,7 +28,8 @@ import {
   WEEKDAY_NAMES_SHORT,
 } from '@/features/events/calendar-utils';
 import type { Event, EventPriority } from '@/features/events/event-types';
-import { getEvents } from '@/features/events/events-api';
+import { deleteEvent, getEvents } from '@/features/events/events-api';
+import { ApiError, NetworkError } from '@/services/http-client';
 import { getToken } from '@/storage/secure-token-storage';
 
 function confirmSignOut(): Promise<boolean> {
@@ -42,6 +43,27 @@ function confirmSignOut(): Promise<boolean> {
       [
         { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
         { text: 'Cerrar sesión', style: 'destructive', onPress: () => resolve(true) },
+      ],
+      { onDismiss: () => resolve(false) },
+    );
+  });
+}
+
+function confirmDelete(title: string): Promise<boolean> {
+  if (Platform.OS === 'web') {
+    return Promise.resolve(
+      window.confirm(
+        `¿Seguro que deseas eliminar el evento «${title}»? Esta acción no se puede deshacer.`,
+      ),
+    );
+  }
+  return new Promise((resolve) => {
+    Alert.alert(
+      'Eliminar evento',
+      `¿Seguro que deseas eliminar el evento «${title}»? Esta acción no se puede deshacer.`,
+      [
+        { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Eliminar', style: 'destructive', onPress: () => resolve(true) },
       ],
       { onDismiss: () => resolve(false) },
     );
@@ -121,6 +143,7 @@ export default function HomeScreen() {
   }, [currentYear, currentMonth, created, updated, reloadToken]);
 
   function handleEditEvent(event: Event) {
+    setDeleteError(null);
     setSelectedEvent(null);
     router.push({
       pathname: '/(app)/events/new',
@@ -134,6 +157,44 @@ export default function HomeScreen() {
         initialPriority: event.priority,
       },
     } as any);
+  }
+
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function handleDeleteEvent(event: Event) {
+    if (deleting) return;
+    const confirmed = await confirmDelete(event.title);
+    if (!confirmed) return;
+
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const token = await getToken();
+      if (!token) {
+        setDeleteError('No hay token de sesión.');
+        return;
+      }
+      await deleteEvent(event.id, token);
+      setSelectedEvent(null);
+      setEvents((prev) => prev.filter((e) => e.id !== event.id));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        setSelectedEvent(null);
+        setEvents((prev) => prev.filter((e) => e.id !== event.id));
+        setFetchError('El evento ya no existe en el servidor.');
+      } else if (error instanceof NetworkError) {
+        setDeleteError(
+          'No se pudo conectar con el servidor. El evento no fue eliminado.',
+        );
+      } else {
+        setDeleteError(
+          'Ocurrió un error inesperado al intentar eliminar el evento.',
+        );
+      }
+    } finally {
+      setDeleting(false);
+    }
   }
 
   const calendarGrid = useMemo(
@@ -452,7 +513,10 @@ export default function HomeScreen() {
                       key={item.id}
                       accessibilityRole="button"
                       accessibilityLabel={`Ver detalles de ${item.title}`}
-                      onPress={() => setSelectedEvent(item)}
+                      onPress={() => {
+                        setDeleteError(null);
+                        setSelectedEvent(item);
+                      }}
                       style={({ pressed }) => [
                         styles.eventCard,
                         {
@@ -521,7 +585,12 @@ export default function HomeScreen() {
             visible={Boolean(selectedEvent)}
             transparent
             animationType="fade"
-            onRequestClose={() => setSelectedEvent(null)}>
+            onRequestClose={() => {
+              if (!deleting) {
+                setDeleteError(null);
+                setSelectedEvent(null);
+              }
+            }}>
             <View style={styles.modalOverlay}>
               <View
                 style={[
@@ -539,7 +608,11 @@ export default function HomeScreen() {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Cerrar modal"
-                    onPress={() => setSelectedEvent(null)}
+                    disabled={deleting}
+                    onPress={() => {
+                      setDeleteError(null);
+                      setSelectedEvent(null);
+                    }}
                     style={styles.modalCloseBtn}>
                     <ThemedText style={styles.modalCloseText}>✕</ThemedText>
                   </Pressable>
@@ -597,14 +670,43 @@ export default function HomeScreen() {
                   </View>
                 )}
 
+                {Boolean(deleteError) && (
+                  <View style={styles.modalErrorBox}>
+                    <ThemedText style={styles.modalErrorText}>
+                      {deleteError}
+                    </ThemedText>
+                  </View>
+                )}
+
                 <View style={styles.modalActions}>
                   <Button
                     title="Editar evento"
+                    disabled={deleting}
                     onPress={() => handleEditEvent(selectedEvent)}
                   />
                   <Pressable
                     accessibilityRole="button"
-                    onPress={() => setSelectedEvent(null)}
+                    accessibilityLabel="Eliminar evento"
+                    disabled={deleting}
+                    onPress={() => handleDeleteEvent(selectedEvent)}
+                    style={({ pressed }) => [
+                      styles.deleteModalBtn,
+                      {
+                        backgroundColor: '#ef4444',
+                        opacity: deleting ? 0.6 : pressed ? 0.8 : 1,
+                      },
+                    ]}>
+                    <ThemedText style={styles.deleteModalText}>
+                      {deleting ? 'Eliminando…' : 'Eliminar evento'}
+                    </ThemedText>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={deleting}
+                    onPress={() => {
+                      setDeleteError(null);
+                      setSelectedEvent(null);
+                    }}
                     style={({ pressed }) => [
                       styles.modalCancelBtn,
                       {
@@ -943,6 +1045,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
+  },
+  modalErrorBox: {
+    padding: Spacing.two,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: Spacing.one,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  modalErrorText: {
+    color: '#ef4444',
+    fontSize: 13,
+  },
+  deleteModalBtn: {
+    minHeight: 44,
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteModalText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: 15,
   },
 });
 
