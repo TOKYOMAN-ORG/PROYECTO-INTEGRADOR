@@ -156,4 +156,12 @@ export class EventsRepository {
     );
     return rows[0];
   }
+
+  async deleteForUser(id: string, userId: string): Promise<boolean> {
+    const { rowCount } = await this.database.query(
+      `DELETE FROM events WHERE id = $1 AND user_id = $2`,
+      [id, userId],
+    );
+    return (rowCount ?? 0) > 0;
+  }
 }

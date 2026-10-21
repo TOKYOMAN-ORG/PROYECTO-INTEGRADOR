@@ -12,6 +12,7 @@ describe('EventsService', () => {
     findByUserIdAndRange: vi.fn(),
     findByIdAndUserId: vi.fn(),
     updateForUser: vi.fn(),
+    deleteForUser: vi.fn(),
   };
 
   const service = new EventsService(repository as unknown as EventsRepository);
@@ -221,6 +222,29 @@ describe('EventsService', () => {
           category: 'otro',
           priority: 'baja',
         }),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('remove', () => {
+    it('elimina el evento si existe y pertenece al usuario', async () => {
+      repository.deleteForUser.mockResolvedValue(true);
+
+      await expect(
+        service.remove('event-uuid-1', 'user-uuid-1'),
+      ).resolves.toBeUndefined();
+
+      expect(repository.deleteForUser).toHaveBeenCalledWith(
+        'event-uuid-1',
+        'user-uuid-1',
+      );
+    });
+
+    it('lanza NotFoundException si deleteForUser devuelve false (ajeno o inexistente)', async () => {
+      repository.deleteForUser.mockResolvedValue(false);
+
+      await expect(
+        service.remove('event-uuid-1', 'user-uuid-1'),
       ).rejects.toThrow();
     });
   });

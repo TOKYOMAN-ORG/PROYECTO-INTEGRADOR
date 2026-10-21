@@ -69,4 +69,11 @@ export class EventsService {
     }
     return updated;
   }
+
+  async remove(id: string, userId: string): Promise<void> {
+    const deleted = await this.eventsRepository.deleteForUser(id, userId);
+    if (!deleted) {
+      throw new NotFoundException('Evento no encontrado');
+    }
+  }
 }

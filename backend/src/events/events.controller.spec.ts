@@ -11,6 +11,7 @@ describe('EventsController', () => {
     findAll: vi.fn(),
     findOne: vi.fn(),
     update: vi.fn(),
+    remove: vi.fn(),
   };
 
   const controller = new EventsController(
@@ -116,5 +117,17 @@ describe('EventsController', () => {
 
     expect(service.update).toHaveBeenCalledWith('event-uuid-456', 'user-uuid-123', dto);
     expect(result).toEqual(mockUpdated);
+  });
+
+  it('llama a eventsService.remove con id y userId', async () => {
+    const mockRequest = {
+      user: { id: 'user-uuid-123', name: 'Ana', email: 'ana@example.com' },
+    } as AuthenticatedRequest;
+
+    service.remove = vi.fn().mockResolvedValue(undefined);
+
+    await controller.remove(mockRequest, 'event-uuid-456');
+
+    expect(service.remove).toHaveBeenCalledWith('event-uuid-456', 'user-uuid-123');
   });
 });

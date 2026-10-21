@@ -335,4 +335,76 @@ describe('Eventos (e2e)', () => {
       expect(response.body).toEqual(updatedMock);
     });
   });
+
+  describe('DELETE /api/events/:id', () => {
+    const eventId = '99999999-9999-4999-8999-999999999999';
+
+    it('rechaza con 401 si no hay token', async () => {
+      await request(app.getHttpServer()).delete(`/api/events/${eventId}`).expect(401);
+    });
+
+    it('rechaza con 400 si el id no es un UUID válido', async () => {
+      await request(app.getHttpServer())
+        .delete('/api/events/invalid-uuid')
+        .set('Authorization', `Bearer ${validToken}`)
+        .expect(400);
+    });
+
+    it('devuelve 404 si el evento no existe o pertenece a otro usuario', async () => {
+      database.query.mockImplementation(async (text: string) => {
+        if (text.includes('FROM users WHERE id = $1')) return { rows: [USER] };
+        if (text.includes('DELETE FROM events')) return { rowCount: 0 };
+        return { rows: [] };
+      });
+
+      await request(app.getHttpServer())
+        .delete(`/api/events/${eventId}`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .expect(404);
+    });
+
+    it('devuelve 204 cuando el usuario es el dueño y elimina el evento', async () => {
+      database.query.mockImplementation(async (text: string, params: unknown[]) => {
+        if (text.includes('FROM users WHERE id = $1')) return { rows: [USER] };
+        if (text.includes('DELETE FROM events')) {
+          if (params[0] === eventId && params[1] === USER.id) {
+            return { rowCount: 1 };
+          }
+        }
+        return { rows: [] };
+      });
+
+      await request(app.getHttpServer())
+        .delete(`/api/events/${eventId}`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .expect(204);
+    });
+
+    it('responde 404 si se repite el DELETE del mismo evento ya eliminado', async () => {
+      let deleted = false;
+      database.query.mockImplementation(async (text: string, params: unknown[]) => {
+        if (text.includes('FROM users WHERE id = $1')) return { rows: [USER] };
+        if (text.includes('DELETE FROM events')) {
+          if (!deleted && params[0] === eventId && params[1] === USER.id) {
+            deleted = true;
+            return { rowCount: 1 };
+          }
+          return { rowCount: 0 };
+        }
+        return { rows: [] };
+      });
+
+      // Primer DELETE -> 204
+      await request(app.getHttpServer())
+        .delete(`/api/events/${eventId}`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .expect(204);
+
+      // Segundo DELETE -> 404
+      await request(app.getHttpServer())
+        .delete(`/api/events/${eventId}`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .expect(404);
+    });
+  });
 });
