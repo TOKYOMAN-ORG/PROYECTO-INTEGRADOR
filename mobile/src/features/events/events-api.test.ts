@@ -6,6 +6,7 @@ import {
   createEvent,
   describeCreateEventError,
   getEvents,
+  updateEvent,
   type CreateEventInput,
 } from './events-api.ts';
 import type { Event } from './event-types.ts';
@@ -101,6 +102,11 @@ describe('describeCreateEventError', () => {
       'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.',
     );
   });
+  it('traduce error 404 como evento inexistente', () => {
+    const error = new ApiError(404, 'Not Found');
+    const result = describeCreateEventError(error);
+    assert.equal(result.message, 'El evento ya no existe');
+  });
 });
 
 describe('getEvents', () => {
@@ -141,6 +147,33 @@ describe('getEvents', () => {
   it('rechaza con ApiError 401 si no hay token', async () => {
     await assert.rejects(
       async () => getEvents(''),
+      (err: unknown) => err instanceof ApiError && err.status === 401,
+    );
+  });
+});
+
+describe('updateEvent', () => {
+  it('envía PUT /api/events/:id con Authorization y el cuerpo actualizado', async () => {
+    const calls: { url: string; init: RequestInit }[] = [];
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return new Response(JSON.stringify(sampleEvent), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const result = await updateEvent('ev-1', sampleInput, 'mock-jwt-token');
+
+    assert.deepEqual(result, sampleEvent);
+    assert.equal(calls[0].url, 'http://api.test/api/events/ev-1');
+    assert.equal(calls[0].init.method, 'PUT');
+    assert.equal(
+      (calls[0].init.headers as Record<string, string>)?.Authorization,
+      'Bearer mock-jwt-token',
+    );
+  });
+
+  it('rechaza con ApiError 401 si no se proporciona token', async () => {
+    await assert.rejects(
+      async () => updateEvent('ev-1', sampleInput, ''),
       (err: unknown) => err instanceof ApiError && err.status === 401,
     );
   });

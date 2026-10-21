@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -62,8 +63,9 @@ function getPriorityBadgeStyle(priority: EventPriority) {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { created, eventTitle } = useLocalSearchParams<{
+  const { created, updated, eventTitle } = useLocalSearchParams<{
     created?: string;
+    updated?: string;
     eventTitle?: string;
   }>();
   const { signOut } = useAuth();
@@ -80,6 +82,7 @@ export default function HomeScreen() {
   const [selectedDate, setSelectedDate] = useState<string>(todayIso);
 
   const [events, setEvents] = useState<Event[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
@@ -115,7 +118,23 @@ export default function HomeScreen() {
     return () => {
       active = false;
     };
-  }, [currentYear, currentMonth, created, reloadToken]);
+  }, [currentYear, currentMonth, created, updated, reloadToken]);
+
+  function handleEditEvent(event: Event) {
+    setSelectedEvent(null);
+    router.push({
+      pathname: '/(app)/events/new',
+      params: {
+        id: event.id,
+        initialTitle: event.title,
+        initialDescription: event.description ?? '',
+        initialDate: event.date,
+        initialTime: event.time,
+        initialCategory: event.category,
+        initialPriority: event.priority,
+      },
+    } as any);
+  }
 
   const calendarGrid = useMemo(
     () => getCalendarGrid(currentYear, currentMonth),
@@ -232,6 +251,15 @@ export default function HomeScreen() {
             <View style={styles.confirmationBox}>
               <ThemedText style={styles.confirmationText}>
                 ✓ Evento {eventTitle ? `«${eventTitle}»` : ''} creado exitosamente
+              </ThemedText>
+            </View>
+          )}
+
+          {/* Mensaje de confirmación de actualización */}
+          {updated === '1' && (
+            <View style={styles.confirmationBox}>
+              <ThemedText style={styles.confirmationText}>
+                ✓ Evento {eventTitle ? `«${eventTitle}»` : ''} actualizado exitosamente
               </ThemedText>
             </View>
           )}
@@ -420,9 +448,12 @@ export default function HomeScreen() {
                 {selectedDateEvents.map((item) => {
                   const badge = getPriorityBadgeStyle(item.priority);
                   return (
-                    <View
+                    <Pressable
                       key={item.id}
-                      style={[
+                      accessibilityRole="button"
+                      accessibilityLabel={`Ver detalles de ${item.title}`}
+                      onPress={() => setSelectedEvent(item)}
+                      style={({ pressed }) => [
                         styles.eventCard,
                         {
                           backgroundColor:
@@ -430,6 +461,7 @@ export default function HomeScreen() {
                               ? palette.backgroundElement
                               : '#ffffff',
                           borderColor: palette.backgroundSelected,
+                          opacity: pressed ? 0.85 : 1,
                         },
                       ]}>
                       <View style={styles.eventCardHeader}>
@@ -475,13 +507,118 @@ export default function HomeScreen() {
                           {item.description}
                         </ThemedText>
                       )}
-                    </View>
+                    </Pressable>
                   );
                 })}
               </View>
             )}
           </View>
         </ScrollView>
+
+        {/* Modal de Detalle del Evento (SCRUM-49) */}
+        {selectedEvent && (
+          <Modal
+            visible={Boolean(selectedEvent)}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setSelectedEvent(null)}>
+            <View style={styles.modalOverlay}>
+              <View
+                style={[
+                  styles.modalContent,
+                  {
+                    backgroundColor:
+                      colorScheme === 'dark' ? palette.backgroundElement : '#ffffff',
+                    borderColor: palette.backgroundSelected,
+                  },
+                ]}>
+                <View style={styles.modalHeader}>
+                  <ThemedText style={[styles.modalTitle, { fontWeight: '700' }]}>
+                    {selectedEvent.title}
+                  </ThemedText>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Cerrar modal"
+                    onPress={() => setSelectedEvent(null)}
+                    style={styles.modalCloseBtn}>
+                    <ThemedText style={styles.modalCloseText}>✕</ThemedText>
+                  </Pressable>
+                </View>
+
+                <View style={styles.modalMetaRow}>
+                  <View style={styles.timeWrapper}>
+                    <ThemedText style={styles.timeIcon}>⏰</ThemedText>
+                    <ThemedText style={styles.timeText}>{selectedEvent.time}</ThemedText>
+                  </View>
+                  <ThemedText style={styles.modalDateText}>
+                    📅 {formatDisplayDate(selectedEvent.date)}
+                  </ThemedText>
+                </View>
+
+                <View style={styles.badgesWrapper}>
+                  <View
+                    style={[
+                      styles.categoryBadge,
+                      { backgroundColor: palette.backgroundSelected },
+                    ]}>
+                    <ThemedText style={styles.categoryBadgeText}>
+                      {selectedEvent.category.charAt(0).toUpperCase() +
+                        selectedEvent.category.slice(1)}
+                    </ThemedText>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.priorityBadge,
+                      {
+                        backgroundColor: getPriorityBadgeStyle(
+                          selectedEvent.priority,
+                        ).bg,
+                      },
+                    ]}>
+                    <ThemedText
+                      style={[
+                        styles.priorityBadgeText,
+                        {
+                          color: getPriorityBadgeStyle(selectedEvent.priority)
+                            .text,
+                        },
+                      ]}>
+                      {getPriorityBadgeStyle(selectedEvent.priority).label}
+                    </ThemedText>
+                  </View>
+                </View>
+
+                {Boolean(selectedEvent.description) && (
+                  <View style={styles.modalDescBox}>
+                    <ThemedText style={styles.modalDescText}>
+                      {selectedEvent.description}
+                    </ThemedText>
+                  </View>
+                )}
+
+                <View style={styles.modalActions}>
+                  <Button
+                    title="Editar evento"
+                    onPress={() => handleEditEvent(selectedEvent)}
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setSelectedEvent(null)}
+                    style={({ pressed }) => [
+                      styles.modalCancelBtn,
+                      {
+                        borderColor: palette.backgroundSelected,
+                        opacity: pressed ? 0.8 : 1,
+                      },
+                    ]}>
+                    <ThemedText type="default">Cerrar</ThemedText>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          </Modal>
+        )}
       </SafeAreaView>
     </ThemedView>
   );
@@ -739,4 +876,73 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     marginTop: 2,
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.four,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 440,
+    borderRadius: Spacing.three,
+    borderWidth: 1,
+    padding: Spacing.four,
+    gap: Spacing.three,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    flex: 1,
+    marginRight: Spacing.two,
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+  },
+  modalCloseText: {
+    fontSize: 18,
+    fontWeight: '600',
+    opacity: 0.6,
+  },
+  modalMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  modalDateText: {
+    fontSize: 13,
+    opacity: 0.8,
+  },
+  modalDescBox: {
+    padding: Spacing.two,
+    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+    borderRadius: Spacing.one,
+  },
+  modalDescText: {
+    fontSize: 14,
+    lineHeight: 20,
+    opacity: 0.9,
+  },
+  modalActions: {
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  modalCancelBtn: {
+    minHeight: 44,
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
 });
+
