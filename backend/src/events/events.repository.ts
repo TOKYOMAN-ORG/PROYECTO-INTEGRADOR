@@ -66,6 +66,14 @@ export class EventsRepository {
   }
 
   async findByUserId(userId: string): Promise<Event[]> {
+    return this.findByUserIdAndRange(userId);
+  }
+
+  async findByUserIdAndRange(
+    userId: string,
+    from?: string,
+    to?: string,
+  ): Promise<Event[]> {
     const { rows } = await this.database.query<Event>(
       `SELECT
          id,
@@ -80,9 +88,34 @@ export class EventsRepository {
          updated_at AS "updatedAt"
        FROM events
        WHERE user_id = $1
+         AND ($2::date IS NULL OR date >= $2::date)
+         AND ($3::date IS NULL OR date <= $3::date)
        ORDER BY date ASC, time ASC`,
-      [userId],
+      [userId, from ?? null, to ?? null],
     );
     return rows;
+  }
+
+  async findByIdAndUserId(
+    id: string,
+    userId: string,
+  ): Promise<Event | undefined> {
+    const { rows } = await this.database.query<Event>(
+      `SELECT
+         id,
+         user_id AS "userId",
+         title,
+         description,
+         to_char(date, 'YYYY-MM-DD') AS date,
+         to_char(time, 'HH24:MI') AS time,
+         category,
+         priority,
+         created_at AS "createdAt",
+         updated_at AS "updatedAt"
+       FROM events
+       WHERE id = $1 AND user_id = $2`,
+      [id, userId],
+    );
+    return rows[0];
   }
 }

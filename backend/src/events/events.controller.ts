@@ -1,9 +1,13 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
+  Param,
+  ParseUUIDPipe,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -12,6 +16,7 @@ import {
   type AuthenticatedRequest,
 } from '../auth/jwt-auth.guard.js';
 import { CreateEventDto } from './dto/create-event.dto.js';
+import { EventsFilterDto } from './dto/events-filter.dto.js';
 import type { Event } from './event.js';
 import { EventsService } from './events.service.js';
 
@@ -28,4 +33,21 @@ export class EventsController {
   ): Promise<Event> {
     return this.eventsService.create(req.user.id, dto);
   }
+
+  @Get()
+  async findAll(
+    @Req() req: AuthenticatedRequest,
+    @Query() filter: EventsFilterDto,
+  ): Promise<Event[]> {
+    return this.eventsService.findAll(req.user.id, filter);
+  }
+
+  @Get(':id')
+  async findOne(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ): Promise<Event> {
+    return this.eventsService.findOne(req.user.id, id);
+  }
 }
+

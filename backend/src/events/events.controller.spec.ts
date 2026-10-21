@@ -8,6 +8,8 @@ import type { EventsService } from './events.service.js';
 describe('EventsController', () => {
   const service = {
     create: vi.fn(),
+    findAll: vi.fn(),
+    findOne: vi.fn(),
   };
 
   const controller = new EventsController(
@@ -54,5 +56,33 @@ describe('EventsController', () => {
 
     expect(service.create).toHaveBeenCalledWith('user-uuid-123', dto);
     expect(response).toEqual(mockEvent);
+  });
+
+  it('llama a eventsService.findAll con el userId y filter', async () => {
+    const mockRequest = {
+      user: { id: 'user-uuid-123', name: 'Ana', email: 'ana@example.com' },
+    } as AuthenticatedRequest;
+
+    service.findAll = vi.fn().mockResolvedValue([]);
+
+    await controller.findAll(mockRequest, { from: '2026-10-01', to: '2026-10-31' });
+
+    expect(service.findAll).toHaveBeenCalledWith('user-uuid-123', {
+      from: '2026-10-01',
+      to: '2026-10-31',
+    });
+  });
+
+  it('llama a eventsService.findOne con el userId y id', async () => {
+    const mockRequest = {
+      user: { id: 'user-uuid-123', name: 'Ana', email: 'ana@example.com' },
+    } as AuthenticatedRequest;
+
+    service.findOne = vi.fn().mockResolvedValue({ id: 'event-uuid-456' });
+
+    const result = await controller.findOne(mockRequest, 'event-uuid-456');
+
+    expect(service.findOne).toHaveBeenCalledWith('user-uuid-123', 'event-uuid-456');
+    expect(result).toEqual({ id: 'event-uuid-456' });
   });
 });

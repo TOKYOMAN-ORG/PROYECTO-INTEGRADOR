@@ -5,6 +5,7 @@ import { ApiError, NetworkError } from '../../services/http-client.ts';
 import {
   createEvent,
   describeCreateEventError,
+  getEvents,
   type CreateEventInput,
 } from './events-api.ts';
 import type { Event } from './event-types.ts';
@@ -98,6 +99,49 @@ describe('describeCreateEventError', () => {
     assert.equal(
       result.message,
       'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.',
+    );
+  });
+});
+
+describe('getEvents', () => {
+  it('envía GET /api/events con query params si se especifican from y to', async () => {
+    const calls: { url: string; init: RequestInit }[] = [];
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return new Response(JSON.stringify([sampleEvent]), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const result = await getEvents('mock-jwt-token', '2026-10-01', '2026-10-31');
+
+    assert.deepEqual(result, [sampleEvent]);
+    assert.equal(
+      calls[0].url,
+      'http://api.test/api/events?from=2026-10-01&to=2026-10-31',
+    );
+    assert.equal(calls[0].init.method, 'GET');
+    assert.equal(
+      (calls[0].init.headers as Record<string, string>)?.Authorization,
+      'Bearer mock-jwt-token',
+    );
+  });
+
+  it('envía GET /api/events sin query params si no se pasan from ni to', async () => {
+    const calls: { url: string; init: RequestInit }[] = [];
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return new Response(JSON.stringify([]), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const result = await getEvents('mock-jwt-token');
+
+    assert.deepEqual(result, []);
+    assert.equal(calls[0].url, 'http://api.test/api/events');
+  });
+
+  it('rechaza con ApiError 401 si no hay token', async () => {
+    await assert.rejects(
+      async () => getEvents(''),
+      (err: unknown) => err instanceof ApiError && err.status === 401,
     );
   });
 });

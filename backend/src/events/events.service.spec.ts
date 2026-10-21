@@ -9,6 +9,8 @@ describe('EventsService', () => {
     insert: vi.fn(),
     findById: vi.fn(),
     findByUserId: vi.fn(),
+    findByUserIdAndRange: vi.fn(),
+    findByIdAndUserId: vi.fn(),
   };
 
   const service = new EventsService(repository as unknown as EventsRepository);
@@ -85,5 +87,82 @@ describe('EventsService', () => {
         description: null,
       }),
     );
+  });
+
+  describe('findAll', () => {
+    it('obtiene los eventos por rango de fechas delegando al repositorio', async () => {
+      const mockList: Event[] = [
+        {
+          id: 'event-uuid-1',
+          userId: 'user-uuid-1',
+          title: 'Evento 1',
+          description: null,
+          date: '2026-10-25',
+          time: '10:00',
+          category: 'trabajo',
+          priority: 'alta',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+
+      repository.findByUserIdAndRange = vi.fn().mockResolvedValue(mockList);
+
+      const result = await service.findAll('user-uuid-1', {
+        from: '2026-10-01',
+        to: '2026-10-31',
+      });
+
+      expect(repository.findByUserIdAndRange).toHaveBeenCalledWith(
+        'user-uuid-1',
+        '2026-10-01',
+        '2026-10-31',
+      );
+      expect(result).toEqual(mockList);
+    });
+
+    it('lanza BadRequestException si from es posterior a to', async () => {
+      await expect(
+        service.findAll('user-uuid-1', {
+          from: '2026-10-31',
+          to: '2026-10-01',
+        }),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('findOne', () => {
+    it('devuelve el evento si existe y pertenece al usuario', async () => {
+      const mockEvent: Event = {
+        id: 'event-uuid-1',
+        userId: 'user-uuid-1',
+        title: 'Evento 1',
+        description: null,
+        date: '2026-10-25',
+        time: '10:00',
+        category: 'trabajo',
+        priority: 'alta',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      repository.findByIdAndUserId = vi.fn().mockResolvedValue(mockEvent);
+
+      const result = await service.findOne('user-uuid-1', 'event-uuid-1');
+
+      expect(repository.findByIdAndUserId).toHaveBeenCalledWith(
+        'event-uuid-1',
+        'user-uuid-1',
+      );
+      expect(result).toEqual(mockEvent);
+    });
+
+    it('lanza NotFoundException si el evento no existe o es de otro usuario', async () => {
+      repository.findByIdAndUserId = vi.fn().mockResolvedValue(undefined);
+
+      await expect(
+        service.findOne('user-uuid-1', 'event-inexistente'),
+      ).rejects.toThrow();
+    });
   });
 });
