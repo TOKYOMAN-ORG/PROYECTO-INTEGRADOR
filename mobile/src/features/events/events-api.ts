@@ -26,6 +26,24 @@ export async function createEvent(
   });
 }
 
+export async function getEvents(
+  token: string,
+  from?: string,
+  to?: string,
+): Promise<Event[]> {
+  if (!token) throw new ApiError(401, 'No hay token de sesión');
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  const qs = params.toString();
+  const endpoint = qs ? `/api/events?${qs}` : '/api/events';
+  return request<Event[]>(endpoint, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+
 export type CreateEventFailure = {
   fields: CreateEventFormErrors;
   message?: string;

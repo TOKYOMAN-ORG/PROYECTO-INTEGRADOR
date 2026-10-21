@@ -152,4 +152,102 @@ describe('Eventos (e2e)', () => {
     expect(response.body.errors).toHaveProperty('category');
     expect(response.body.errors).toHaveProperty('priority');
   });
+
+  describe('GET /api/events', () => {
+    it('rechaza con 401 si no hay token', async () => {
+      await request(app.getHttpServer()).get('/api/events').expect(401);
+    });
+
+    it('devuelve los eventos del usuario con 200', async () => {
+      const mockEvent = {
+        id: '99999999-9999-4999-8999-999999999999',
+        userId: USER.id,
+        title: 'Evento 1',
+        description: null,
+        date: '2026-10-25',
+        time: '10:00',
+        category: 'trabajo',
+        priority: 'alta',
+      };
+
+      database.query.mockImplementation(async (text: string, params: unknown[]) => {
+        if (text.includes('FROM users WHERE id = $1')) return { rows: [USER] };
+        if (text.includes('FROM events') && text.includes('user_id = $1')) {
+          if (params[0] === USER.id) return { rows: [mockEvent] };
+        }
+        return { rows: [] };
+      });
+
+      const response = await request(app.getHttpServer())
+        .get('/api/events?from=2026-10-01&to=2026-10-31')
+        .set('Authorization', `Bearer ${validToken}`)
+        .expect(200);
+
+      expect(response.body).toEqual([mockEvent]);
+    });
+
+    it('rechaza con 400 cuando from es posterior a to', async () => {
+      database.query.mockImplementation(async (text: string) => {
+        if (text.includes('FROM users WHERE id = $1')) return { rows: [USER] };
+        return { rows: [] };
+      });
+
+      const response = await request(app.getHttpServer())
+        .get('/api/events?from=2026-10-31&to=2026-10-01')
+        .set('Authorization', `Bearer ${validToken}`)
+        .expect(400);
+
+      expect(response.body.errors).toHaveProperty('from');
+    });
+  });
+
+  describe('GET /api/events/:id', () => {
+    const eventId = '99999999-9999-4999-8999-999999999999';
+
+    it('rechaza con 401 si no hay token', async () => {
+      await request(app.getHttpServer()).get(`/api/events/${eventId}`).expect(401);
+    });
+
+    it('devuelve 200 con el evento cuando pertenece al usuario autenticado', async () => {
+      const mockEvent = {
+        id: eventId,
+        userId: USER.id,
+        title: 'Evento 1',
+        description: null,
+        date: '2026-10-25',
+        time: '10:00',
+        category: 'trabajo',
+        priority: 'alta',
+      };
+
+      database.query.mockImplementation(async (text: string, params: unknown[]) => {
+        if (text.includes('FROM users WHERE id = $1')) return { rows: [USER] };
+        if (text.includes('FROM events') && text.includes('user_id = $2')) {
+          if (params[0] === eventId && params[1] === USER.id) {
+            return { rows: [mockEvent] };
+          }
+        }
+        return { rows: [] };
+      });
+
+      const response = await request(app.getHttpServer())
+        .get(`/api/events/${eventId}`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .expect(200);
+
+      expect(response.body).toEqual(mockEvent);
+    });
+
+    it('devuelve 404 cuando el evento no existe o es de otro usuario', async () => {
+      database.query.mockImplementation(async (text: string) => {
+        if (text.includes('FROM users WHERE id = $1')) return { rows: [USER] };
+        return { rows: [] };
+      });
+
+      await request(app.getHttpServer())
+        .get(`/api/events/${eventId}`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .expect(404);
+    });
+  });
 });
