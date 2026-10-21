@@ -20,12 +20,14 @@ import {
 const EMPTY_VALUES: LoginValues = { email: '', password: '' };
 
 export default function LoginScreen() {
-  const { signInWithCredentials } = useAuth();
-  const { registered } = useLocalSearchParams<{ registered?: string }>();
+  const { signInWithCredentials, sessionExpired, clearSessionExpired } = useAuth();
+  const { registered, expired } = useLocalSearchParams<{ registered?: string; expired?: string }>();
   const [values, setValues] = useState(EMPTY_VALUES);
   const [errors, setErrors] = useState<LoginFormErrors>({});
   const [formError, setFormError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
+
+  const isExpired = Boolean(expired) || sessionExpired;
 
   const update = (field: LoginField) => (text: string) => {
     setValues((current) => ({ ...current, [field]: text }));
@@ -35,6 +37,7 @@ export default function LoginScreen() {
   async function submit() {
     if (submitting) return;
     setFormError(undefined);
+    clearSessionExpired();
 
     const found = validateLogin(values);
     setErrors(found);
@@ -69,6 +72,13 @@ export default function LoginScreen() {
                 Cuenta creada correctamente. Ya puedes iniciar sesión.
               </ThemedText>
             ) : null}
+
+            {isExpired ? (
+              <ThemedText themeColor="error" accessibilityLiveRegion="polite">
+                Tu sesión expiró
+              </ThemedText>
+            ) : null}
+
 
             <TextField
               label="Correo electrónico"

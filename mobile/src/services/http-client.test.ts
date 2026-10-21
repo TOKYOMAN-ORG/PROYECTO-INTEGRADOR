@@ -3,13 +3,15 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 
 import {
   addRequestInterceptor,
+  addResponseInterceptor,
   ApiError,
   isPublicPath,
   NetworkError,
+  onSessionExpired,
   request,
   resetDefaultInterceptors,
 } from './http-client.ts';
-import { deleteToken, saveToken } from '../storage/secure-token-storage.ts';
+import { deleteToken, getToken, saveToken } from '../storage/secure-token-storage.ts';
 
 const realFetch = globalThis.fetch;
 const realApiUrl = process.env.EXPO_PUBLIC_API_URL;
@@ -272,4 +274,119 @@ describe('request: interceptores de petición y JWT (SCRUM-51)', () => {
     assert.equal(isPublicPath('/api/users/me'), false);
   });
 });
+
+describe('request: interceptores de respuesta y cierre de sesión (SCRUM-52)', () => {
+  it('ante 401 en ruta autenticada, borra el token de SecureStore y notifica expiración', async () => {
+    await saveToken('token-valido-123');
+    mockFetch(async () => json({ statusCode: 401, message: 'Token expirado' }, 401));
+
+    let notified = 0;
+    const unsubscribe = onSessionExpired(() => {
+      notified++;
+    });
+
+    const error = await failure(request('/api/events'));
+
+    assert.ok(error instanceof ApiError);
+    assert.equal(error.status, 401);
+    assert.equal(await getToken(), null);
+    assert.equal(notified, 1);
+
+    unsubscribe();
+  });
+
+  it('el 401 en login (credenciales inválidas) no borra nada ni dispara el cierre de sesión', async () => {
+    await saveToken('token-de-otra-cuenta');
+    mockFetch(async () => json({ statusCode: 401, message: 'Credenciales inválidas' }, 401));
+
+    let notified = 0;
+    const unsubscribe = onSessionExpired(() => {
+      notified++;
+    });
+
+    const error = await failure(
+      request('/api/auth/login', { method: 'POST', body: { email: 'bad@user.com' } }),
+    );
+
+    assert.ok(error instanceof ApiError);
+    assert.equal(error.status, 401);
+    assert.equal(await getToken(), 'token-de-otra-cuenta');
+    assert.equal(notified, 0);
+
+    unsubscribe();
+  });
+
+  it('varias respuestas 401 simultáneas provocan un único cierre de sesión (deduplicación)', async () => {
+    await saveToken('token-compartido');
+    mockFetch(async () => json({ statusCode: 401, message: 'Unauthorized' }, 401));
+
+    let notifications = 0;
+    const unsubscribe = onSessionExpired(async () => {
+      // Simula pequeña pausa asíncrona para permitir concurrencia
+      await new Promise((r) => setTimeout(r, 10));
+      notifications++;
+    });
+
+    const results = await Promise.allSettled([
+      request('/api/events'),
+      request('/api/events/today'),
+      request('/api/profile'),
+    ]);
+
+    assert.equal(results.length, 3);
+    for (const r of results) {
+      assert.equal(r.status, 'rejected');
+      assert.equal((r.reason as ApiError).status, 401);
+    }
+
+    assert.equal(await getToken(), null);
+    assert.equal(notifications, 1);
+
+    unsubscribe();
+  });
+
+  it('los errores 5xx y fallos de red no cierran la sesión ni disparan expiración', async () => {
+    await saveToken('token-vigente');
+
+    let notified = 0;
+    const unsubscribe = onSessionExpired(() => {
+      notified++;
+    });
+
+    // 500 Internal Server Error
+    mockFetch(async () => json({ message: 'Internal error' }, 500));
+    await failure(request('/api/events'));
+    assert.equal(await getToken(), 'token-vigente');
+    assert.equal(notified, 0);
+
+    // Fallo de red
+    mockFetch(async () => {
+      throw new TypeError('Network error');
+    });
+    await failure(request('/api/events'));
+    assert.equal(await getToken(), 'token-vigente');
+    assert.equal(notified, 0);
+
+    unsubscribe();
+  });
+
+  it('un interceptor de respuesta personalizado puede agregarse y desregistrarse', async () => {
+    mockFetch(async () => json({ count: 42 }, 200));
+
+    let capturedStatus = 0;
+    const unsubscribe = addResponseInterceptor((ctx) => {
+      capturedStatus = ctx.status;
+    });
+
+    await request('/api/stats');
+    assert.equal(capturedStatus, 200);
+
+    unsubscribe();
+    mockFetch(async () => json({ count: 99 }, 200));
+    capturedStatus = 0;
+    await request('/api/stats');
+    assert.equal(capturedStatus, 0);
+  });
+});
+
 
