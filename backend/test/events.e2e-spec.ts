@@ -250,4 +250,89 @@ describe('Eventos (e2e)', () => {
         .expect(404);
     });
   });
+
+  describe('PUT /api/events/:id', () => {
+    const eventId = '99999999-9999-4999-8999-999999999999';
+    const validUpdate = {
+      title: 'Reunión Actualizada',
+      description: 'Nuevos temas a tratar',
+      date: '2026-10-28',
+      time: '16:00',
+      category: 'trabajo',
+      priority: 'alta',
+    };
+
+    it('rechaza con 401 si no hay token', async () => {
+      await request(app.getHttpServer())
+        .put(`/api/events/${eventId}`)
+        .send(validUpdate)
+        .expect(401);
+    });
+
+    it('rechaza con 400 si el id no es un UUID válido', async () => {
+      await request(app.getHttpServer())
+        .put('/api/events/invalid-uuid')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send(validUpdate)
+        .expect(400);
+    });
+
+    it('rechaza con 400 si se envía userId en el cuerpo (mass-assignment)', async () => {
+      await request(app.getHttpServer())
+        .put(`/api/events/${eventId}`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({ ...validUpdate, userId: '00000000-0000-4000-8000-000000000000' })
+        .expect(400);
+    });
+
+    it('rechaza con 400 si los campos no cumplen las reglas de validación', async () => {
+      await request(app.getHttpServer())
+        .put(`/api/events/${eventId}`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({ ...validUpdate, date: 'fecha-invalida' })
+        .expect(400);
+    });
+
+    it('devuelve 404 si el evento no existe o pertenece a otro usuario', async () => {
+      database.query.mockImplementation(async (text: string) => {
+        if (text.includes('FROM users WHERE id = $1')) return { rows: [USER] };
+        if (text.includes('UPDATE events')) return { rows: [] };
+        return { rows: [] };
+      });
+
+      await request(app.getHttpServer())
+        .put(`/api/events/${eventId}`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .send(validUpdate)
+        .expect(404);
+    });
+
+    it('devuelve 200 y el evento actualizado cuando el usuario es el dueño', async () => {
+      const updatedMock = {
+        id: eventId,
+        userId: USER.id,
+        ...validUpdate,
+        createdAt: '2026-10-21T10:00:00.000Z',
+        updatedAt: '2026-10-21T11:00:00.000Z',
+      };
+
+      database.query.mockImplementation(async (text: string, params: unknown[]) => {
+        if (text.includes('FROM users WHERE id = $1')) return { rows: [USER] };
+        if (text.includes('UPDATE events')) {
+          if (params[6] === eventId && params[7] === USER.id) {
+            return { rows: [updatedMock] };
+          }
+        }
+        return { rows: [] };
+      });
+
+      const response = await request(app.getHttpServer())
+        .put(`/api/events/${eventId}`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .send(validUpdate)
+        .expect(200);
+
+      expect(response.body).toEqual(updatedMock);
+    });
+  });
 });

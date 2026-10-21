@@ -50,4 +50,23 @@ export class EventsService {
     }
     return event;
   }
+
+  async update(
+    id: string,
+    userId: string,
+    dto: CreateEventDto,
+  ): Promise<Event> {
+    const updated = await this.eventsRepository.updateForUser(id, userId, {
+      title: dto.title,
+      description: dto.description ?? null,
+      date: dto.date,
+      time: dto.time,
+      category: dto.category,
+      priority: dto.priority,
+    });
+    if (!updated) {
+      throw new NotFoundException('Evento no encontrado');
+    }
+    return updated;
+  }
 }

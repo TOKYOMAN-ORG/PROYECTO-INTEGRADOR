@@ -11,6 +11,7 @@ describe('EventsService', () => {
     findByUserId: vi.fn(),
     findByUserIdAndRange: vi.fn(),
     findByIdAndUserId: vi.fn(),
+    updateForUser: vi.fn(),
   };
 
   const service = new EventsService(repository as unknown as EventsRepository);
@@ -162,6 +163,64 @@ describe('EventsService', () => {
 
       await expect(
         service.findOne('user-uuid-1', 'event-inexistente'),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('update', () => {
+    it('actualiza el evento si existe y pertenece al usuario', async () => {
+      const dto: CreateEventDto = {
+        title: 'Título Editado',
+        description: 'Descripción editada',
+        date: '2026-10-27',
+        time: '11:00',
+        category: 'estudio',
+        priority: 'media',
+      };
+
+      const updatedEvent: Event = {
+        id: 'event-uuid-1',
+        userId: 'user-uuid-1',
+        title: dto.title,
+        description: dto.description ?? null,
+        date: dto.date,
+        time: dto.time,
+        category: dto.category,
+        priority: dto.priority,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      repository.updateForUser = vi.fn().mockResolvedValue(updatedEvent);
+
+      const result = await service.update('event-uuid-1', 'user-uuid-1', dto);
+
+      expect(repository.updateForUser).toHaveBeenCalledWith(
+        'event-uuid-1',
+        'user-uuid-1',
+        {
+          title: dto.title,
+          description: dto.description,
+          date: dto.date,
+          time: dto.time,
+          category: dto.category,
+          priority: dto.priority,
+        },
+      );
+      expect(result).toEqual(updatedEvent);
+    });
+
+    it('lanza NotFoundException si updateForUser devuelve undefined (ajeno o inexistente)', async () => {
+      repository.updateForUser = vi.fn().mockResolvedValue(undefined);
+
+      await expect(
+        service.update('event-uuid-1', 'user-uuid-1', {
+          title: 'T',
+          date: '2026-10-25',
+          time: '10:00',
+          category: 'otro',
+          priority: 'baja',
+        }),
       ).rejects.toThrow();
     });
   });

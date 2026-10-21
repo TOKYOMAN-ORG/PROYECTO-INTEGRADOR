@@ -7,6 +7,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
@@ -48,6 +49,15 @@ export class EventsController {
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<Event> {
     return this.eventsService.findOne(req.user.id, id);
+  }
+
+  @Put(':id')
+  async update(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Body() dto: CreateEventDto,
+  ): Promise<Event> {
+    return this.eventsService.update(id, req.user.id, dto);
   }
 }
 
