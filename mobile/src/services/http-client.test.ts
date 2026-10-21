@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 
-import { ApiError, NetworkError, request } from './http-client.ts';
+import {
+  addRequestInterceptor,
+  ApiError,
+  isPublicPath,
+  NetworkError,
+  request,
+  resetDefaultInterceptors,
+} from './http-client.ts';
+import { deleteToken, saveToken } from '../storage/secure-token-storage.ts';
 
 const realFetch = globalThis.fetch;
 const realApiUrl = process.env.EXPO_PUBLIC_API_URL;
@@ -34,8 +42,10 @@ async function failure(promise: Promise<unknown>): Promise<unknown> {
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
-beforeEach(() => {
+beforeEach(async () => {
   process.env.EXPO_PUBLIC_API_URL = 'http://api.test';
+  await deleteToken();
+  resetDefaultInterceptors();
 });
 
 afterEach(() => {
@@ -180,3 +190,86 @@ describe('request: fallos de red', () => {
     assert.equal(calls.length, 0);
   });
 });
+
+describe('request: interceptores de petición y JWT (SCRUM-51)', () => {
+  it('una llamada a una ruta autenticada con token guardado incluye Authorization: Bearer <token>', async () => {
+    await saveToken('jwt-super-secreto-123');
+    mockFetch(async () => json({ status: 'ok' }));
+
+    await request('/api/events');
+
+    assert.equal(calls.length, 1);
+    const headers = calls[0].init.headers as Record<string, string>;
+    assert.equal(headers['Authorization'], 'Bearer jwt-super-secreto-123');
+  });
+
+  it('las llamadas a login y register son públicas y no llevan Authorization', async () => {
+    await saveToken('jwt-existente');
+    mockFetch(async () => json({ token: 'nuevo' }));
+
+    await request('/api/auth/login', { method: 'POST', body: { email: 'a@b.c' } });
+    await request('api/auth/register', { method: 'POST', body: { email: 'x@y.z' } });
+
+    assert.equal(calls.length, 2);
+    const loginHeaders = calls[0].init.headers as Record<string, string>;
+    const registerHeaders = calls[1].init.headers as Record<string, string>;
+
+    assert.equal(loginHeaders['Authorization'], undefined);
+    assert.equal(registerHeaders['Authorization'], undefined);
+  });
+
+  it('sin token guardado la petición se envía sin cabecera Authorization y sin lanzar error', async () => {
+    mockFetch(async () => json({ items: [] }));
+
+    const res = await request('/api/events');
+
+    assert.deepEqual(res, { items: [] });
+    assert.equal(calls.length, 1);
+    const headers = calls[0].init.headers as Record<string, string>;
+    assert.equal(headers['Authorization'], undefined);
+  });
+
+  it('si el llamador ya pasó una cabecera Authorization manual, se respeta', async () => {
+    await saveToken('token-en-storage');
+    mockFetch(async () => json({ ok: true }));
+
+    await request('/api/custom', {
+      headers: { Authorization: 'Bearer token-manual-del-llamador' },
+    });
+
+    assert.equal(calls.length, 1);
+    const headers = calls[0].init.headers as Record<string, string>;
+    assert.equal(headers['Authorization'], 'Bearer token-manual-del-llamador');
+  });
+
+  it('un interceptor de petición personalizado puede agregarse y desregistrarse', async () => {
+    mockFetch(async () => json({ ok: true }));
+
+    const unsubscribe = addRequestInterceptor((ctx) => {
+      ctx.headers['X-Custom-Client'] = 'secureplan-mobile';
+    });
+
+    await request('/api/test');
+    assert.equal(
+      (calls[0].init.headers as Record<string, string>)['X-Custom-Client'],
+      'secureplan-mobile',
+    );
+
+    unsubscribe();
+    await request('/api/test-2');
+    assert.equal(
+      (calls[1].init.headers as Record<string, string>)['X-Custom-Client'],
+      undefined,
+    );
+  });
+
+  it('isPublicPath detecta correctamente rutas de login y registro', () => {
+    assert.equal(isPublicPath('/api/auth/login'), true);
+    assert.equal(isPublicPath('api/auth/login'), true);
+    assert.equal(isPublicPath('/api/auth/register'), true);
+    assert.equal(isPublicPath('/api/auth/login?redirect=home'), true);
+    assert.equal(isPublicPath('/api/events'), false);
+    assert.equal(isPublicPath('/api/users/me'), false);
+  });
+});
+
