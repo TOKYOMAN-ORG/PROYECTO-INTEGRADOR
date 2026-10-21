@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -27,7 +28,8 @@ import {
   WEEKDAY_NAMES_SHORT,
 } from '@/features/events/calendar-utils';
 import type { Event, EventPriority } from '@/features/events/event-types';
-import { getEvents } from '@/features/events/events-api';
+import { deleteEvent, getEvents } from '@/features/events/events-api';
+import { ApiError, NetworkError } from '@/services/http-client';
 import { getToken } from '@/storage/secure-token-storage';
 
 function confirmSignOut(): Promise<boolean> {
@@ -41,6 +43,27 @@ function confirmSignOut(): Promise<boolean> {
       [
         { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
         { text: 'Cerrar sesión', style: 'destructive', onPress: () => resolve(true) },
+      ],
+      { onDismiss: () => resolve(false) },
+    );
+  });
+}
+
+function confirmDelete(title: string): Promise<boolean> {
+  if (Platform.OS === 'web') {
+    return Promise.resolve(
+      window.confirm(
+        `¿Seguro que deseas eliminar el evento «${title}»? Esta acción no se puede deshacer.`,
+      ),
+    );
+  }
+  return new Promise((resolve) => {
+    Alert.alert(
+      'Eliminar evento',
+      `¿Seguro que deseas eliminar el evento «${title}»? Esta acción no se puede deshacer.`,
+      [
+        { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Eliminar', style: 'destructive', onPress: () => resolve(true) },
       ],
       { onDismiss: () => resolve(false) },
     );
@@ -62,8 +85,9 @@ function getPriorityBadgeStyle(priority: EventPriority) {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { created, eventTitle } = useLocalSearchParams<{
+  const { created, updated, eventTitle } = useLocalSearchParams<{
     created?: string;
+    updated?: string;
     eventTitle?: string;
   }>();
   const { signOut } = useAuth();
@@ -80,6 +104,7 @@ export default function HomeScreen() {
   const [selectedDate, setSelectedDate] = useState<string>(todayIso);
 
   const [events, setEvents] = useState<Event[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
@@ -115,7 +140,62 @@ export default function HomeScreen() {
     return () => {
       active = false;
     };
-  }, [currentYear, currentMonth, created, reloadToken]);
+  }, [currentYear, currentMonth, created, updated, reloadToken]);
+
+  function handleEditEvent(event: Event) {
+    setDeleteError(null);
+    setSelectedEvent(null);
+    router.push({
+      pathname: '/(app)/events/new',
+      params: {
+        id: event.id,
+        initialTitle: event.title,
+        initialDescription: event.description ?? '',
+        initialDate: event.date,
+        initialTime: event.time,
+        initialCategory: event.category,
+        initialPriority: event.priority,
+      },
+    } as any);
+  }
+
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function handleDeleteEvent(event: Event) {
+    if (deleting) return;
+    const confirmed = await confirmDelete(event.title);
+    if (!confirmed) return;
+
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const token = await getToken();
+      if (!token) {
+        setDeleteError('No hay token de sesión.');
+        return;
+      }
+      await deleteEvent(event.id, token);
+      setSelectedEvent(null);
+      setEvents((prev) => prev.filter((e) => e.id !== event.id));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        setSelectedEvent(null);
+        setEvents((prev) => prev.filter((e) => e.id !== event.id));
+        setFetchError('El evento ya no existe en el servidor.');
+      } else if (error instanceof NetworkError) {
+        setDeleteError(
+          'No se pudo conectar con el servidor. El evento no fue eliminado.',
+        );
+      } else {
+        setDeleteError(
+          'Ocurrió un error inesperado al intentar eliminar el evento.',
+        );
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const calendarGrid = useMemo(
     () => getCalendarGrid(currentYear, currentMonth),
@@ -232,6 +312,15 @@ export default function HomeScreen() {
             <View style={styles.confirmationBox}>
               <ThemedText style={styles.confirmationText}>
                 ✓ Evento {eventTitle ? `«${eventTitle}»` : ''} creado exitosamente
+              </ThemedText>
+            </View>
+          )}
+
+          {/* Mensaje de confirmación de actualización */}
+          {updated === '1' && (
+            <View style={styles.confirmationBox}>
+              <ThemedText style={styles.confirmationText}>
+                ✓ Evento {eventTitle ? `«${eventTitle}»` : ''} actualizado exitosamente
               </ThemedText>
             </View>
           )}
@@ -420,9 +509,15 @@ export default function HomeScreen() {
                 {selectedDateEvents.map((item) => {
                   const badge = getPriorityBadgeStyle(item.priority);
                   return (
-                    <View
+                    <Pressable
                       key={item.id}
-                      style={[
+                      accessibilityRole="button"
+                      accessibilityLabel={`Ver detalles de ${item.title}`}
+                      onPress={() => {
+                        setDeleteError(null);
+                        setSelectedEvent(item);
+                      }}
+                      style={({ pressed }) => [
                         styles.eventCard,
                         {
                           backgroundColor:
@@ -430,6 +525,7 @@ export default function HomeScreen() {
                               ? palette.backgroundElement
                               : '#ffffff',
                           borderColor: palette.backgroundSelected,
+                          opacity: pressed ? 0.85 : 1,
                         },
                       ]}>
                       <View style={styles.eventCardHeader}>
@@ -475,13 +571,156 @@ export default function HomeScreen() {
                           {item.description}
                         </ThemedText>
                       )}
-                    </View>
+                    </Pressable>
                   );
                 })}
               </View>
             )}
           </View>
         </ScrollView>
+
+        {/* Modal de Detalle del Evento (SCRUM-49) */}
+        {selectedEvent && (
+          <Modal
+            visible={Boolean(selectedEvent)}
+            transparent
+            animationType="fade"
+            onRequestClose={() => {
+              if (!deleting) {
+                setDeleteError(null);
+                setSelectedEvent(null);
+              }
+            }}>
+            <View style={styles.modalOverlay}>
+              <View
+                style={[
+                  styles.modalContent,
+                  {
+                    backgroundColor:
+                      colorScheme === 'dark' ? palette.backgroundElement : '#ffffff',
+                    borderColor: palette.backgroundSelected,
+                  },
+                ]}>
+                <View style={styles.modalHeader}>
+                  <ThemedText style={[styles.modalTitle, { fontWeight: '700' }]}>
+                    {selectedEvent.title}
+                  </ThemedText>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Cerrar modal"
+                    disabled={deleting}
+                    onPress={() => {
+                      setDeleteError(null);
+                      setSelectedEvent(null);
+                    }}
+                    style={styles.modalCloseBtn}>
+                    <ThemedText style={styles.modalCloseText}>✕</ThemedText>
+                  </Pressable>
+                </View>
+
+                <View style={styles.modalMetaRow}>
+                  <View style={styles.timeWrapper}>
+                    <ThemedText style={styles.timeIcon}>⏰</ThemedText>
+                    <ThemedText style={styles.timeText}>{selectedEvent.time}</ThemedText>
+                  </View>
+                  <ThemedText style={styles.modalDateText}>
+                    📅 {formatDisplayDate(selectedEvent.date)}
+                  </ThemedText>
+                </View>
+
+                <View style={styles.badgesWrapper}>
+                  <View
+                    style={[
+                      styles.categoryBadge,
+                      { backgroundColor: palette.backgroundSelected },
+                    ]}>
+                    <ThemedText style={styles.categoryBadgeText}>
+                      {selectedEvent.category.charAt(0).toUpperCase() +
+                        selectedEvent.category.slice(1)}
+                    </ThemedText>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.priorityBadge,
+                      {
+                        backgroundColor: getPriorityBadgeStyle(
+                          selectedEvent.priority,
+                        ).bg,
+                      },
+                    ]}>
+                    <ThemedText
+                      style={[
+                        styles.priorityBadgeText,
+                        {
+                          color: getPriorityBadgeStyle(selectedEvent.priority)
+                            .text,
+                        },
+                      ]}>
+                      {getPriorityBadgeStyle(selectedEvent.priority).label}
+                    </ThemedText>
+                  </View>
+                </View>
+
+                {Boolean(selectedEvent.description) && (
+                  <View style={styles.modalDescBox}>
+                    <ThemedText style={styles.modalDescText}>
+                      {selectedEvent.description}
+                    </ThemedText>
+                  </View>
+                )}
+
+                {Boolean(deleteError) && (
+                  <View style={styles.modalErrorBox}>
+                    <ThemedText style={styles.modalErrorText}>
+                      {deleteError}
+                    </ThemedText>
+                  </View>
+                )}
+
+                <View style={styles.modalActions}>
+                  <Button
+                    title="Editar evento"
+                    disabled={deleting}
+                    onPress={() => handleEditEvent(selectedEvent)}
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Eliminar evento"
+                    disabled={deleting}
+                    onPress={() => handleDeleteEvent(selectedEvent)}
+                    style={({ pressed }) => [
+                      styles.deleteModalBtn,
+                      {
+                        backgroundColor: '#ef4444',
+                        opacity: deleting ? 0.6 : pressed ? 0.8 : 1,
+                      },
+                    ]}>
+                    <ThemedText style={styles.deleteModalText}>
+                      {deleting ? 'Eliminando…' : 'Eliminar evento'}
+                    </ThemedText>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={deleting}
+                    onPress={() => {
+                      setDeleteError(null);
+                      setSelectedEvent(null);
+                    }}
+                    style={({ pressed }) => [
+                      styles.modalCancelBtn,
+                      {
+                        borderColor: palette.backgroundSelected,
+                        opacity: pressed ? 0.8 : 1,
+                      },
+                    ]}>
+                    <ThemedText type="default">Cerrar</ThemedText>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          </Modal>
+        )}
       </SafeAreaView>
     </ThemedView>
   );
@@ -739,4 +978,96 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     marginTop: 2,
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.four,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 440,
+    borderRadius: Spacing.three,
+    borderWidth: 1,
+    padding: Spacing.four,
+    gap: Spacing.three,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    flex: 1,
+    marginRight: Spacing.two,
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+  },
+  modalCloseText: {
+    fontSize: 18,
+    fontWeight: '600',
+    opacity: 0.6,
+  },
+  modalMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  modalDateText: {
+    fontSize: 13,
+    opacity: 0.8,
+  },
+  modalDescBox: {
+    padding: Spacing.two,
+    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+    borderRadius: Spacing.one,
+  },
+  modalDescText: {
+    fontSize: 14,
+    lineHeight: 20,
+    opacity: 0.9,
+  },
+  modalActions: {
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  modalCancelBtn: {
+    minHeight: 44,
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  modalErrorBox: {
+    padding: Spacing.two,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: Spacing.one,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  modalErrorText: {
+    color: '#ef4444',
+    fontSize: 13,
+  },
+  deleteModalBtn: {
+    minHeight: 44,
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteModalText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: 15,
+  },
 });
+

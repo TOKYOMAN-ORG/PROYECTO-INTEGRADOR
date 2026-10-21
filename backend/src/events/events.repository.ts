@@ -118,4 +118,50 @@ export class EventsRepository {
     );
     return rows[0];
   }
+
+  async updateForUser(
+    id: string,
+    userId: string,
+    {
+      title,
+      description = null,
+      date,
+      time,
+      category,
+      priority,
+    }: Omit<NewEventRecord, 'userId'>,
+  ): Promise<Event | undefined> {
+    const { rows } = await this.database.query<Event>(
+      `UPDATE events
+       SET title = $1,
+           description = $2,
+           date = $3,
+           time = $4,
+           category = $5,
+           priority = $6,
+           updated_at = now()
+       WHERE id = $7 AND user_id = $8
+       RETURNING
+         id,
+         user_id AS "userId",
+         title,
+         description,
+         to_char(date, 'YYYY-MM-DD') AS date,
+         to_char(time, 'HH24:MI') AS time,
+         category,
+         priority,
+         created_at AS "createdAt",
+         updated_at AS "updatedAt"`,
+      [title, description, date, time, category, priority, id, userId],
+    );
+    return rows[0];
+  }
+
+  async deleteForUser(id: string, userId: string): Promise<boolean> {
+    const { rowCount } = await this.database.query(
+      `DELETE FROM events WHERE id = $1 AND user_id = $2`,
+      [id, userId],
+    );
+    return (rowCount ?? 0) > 0;
+  }
 }

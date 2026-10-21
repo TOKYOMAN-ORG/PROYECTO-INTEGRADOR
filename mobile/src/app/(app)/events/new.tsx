@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -31,27 +31,39 @@ import {
 import {
   createEvent,
   describeCreateEventError,
+  updateEvent,
 } from '@/features/events/events-api';
 import { getToken } from '@/storage/secure-token-storage';
 
-const INITIAL_VALUES: CreateEventValues = {
-  title: '',
-  description: '',
-  date: new Date().toISOString().split('T')[0],
-  time: '12:00',
-  category: 'personal',
-  priority: 'media',
-};
-
 export default function NewEventScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    id?: string;
+    initialTitle?: string;
+    initialDescription?: string;
+    initialDate?: string;
+    initialTime?: string;
+    initialCategory?: string;
+    initialPriority?: string;
+  }>();
+
+  const isEditing = Boolean(params.id);
   const scheme = useColorScheme();
   const colorScheme = scheme === 'dark' ? 'dark' : 'light';
   const palette = Colors[colorScheme];
 
-  const [values, setValues] = useState<CreateEventValues>(INITIAL_VALUES);
+  const [values, setValues] = useState<CreateEventValues>(() => ({
+    title: params.initialTitle ?? '',
+    description: params.initialDescription ?? '',
+    date: params.initialDate ?? new Date().toISOString().split('T')[0],
+    time: params.initialTime ?? '12:00',
+    category: (params.initialCategory as EventCategory) ?? 'personal',
+    priority: (params.initialPriority as EventPriority) ?? 'media',
+  }));
+
   const [errors, setErrors] = useState<CreateEventFormErrors>({});
   const [generalError, setGeneralError] = useState<string>();
+  const [isNotFound, setIsNotFound] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const update = (field: CreateEventField) => (text: string) => {
@@ -72,6 +84,7 @@ export default function NewEventScreen() {
   async function handleSubmit() {
     if (submitting) return;
     setGeneralError(undefined);
+    setIsNotFound(false);
 
     const clientErrors = validateCreateEvent(values);
     setErrors(clientErrors);
@@ -85,27 +98,35 @@ export default function NewEventScreen() {
         return;
       }
 
-      await createEvent(
-        {
-          title: values.title.trim(),
-          description: values.description?.trim() || undefined,
-          date: values.date.trim(),
-          time: values.time.trim(),
-          category: values.category as EventCategory,
-          priority: values.priority as EventPriority,
-        },
-        token,
-      );
+      const payload = {
+        title: values.title.trim(),
+        description: values.description?.trim() || undefined,
+        date: values.date.trim(),
+        time: values.time.trim(),
+        category: values.category as EventCategory,
+        priority: values.priority as EventPriority,
+      };
 
-      // Regresar a la pantalla de inicio con bandera de evento creado
-      router.replace({
-        pathname: '/(app)',
-        params: { created: '1', eventTitle: values.title.trim() },
-      });
+      if (isEditing && params.id) {
+        await updateEvent(params.id, payload, token);
+        router.replace({
+          pathname: '/(app)',
+          params: { updated: '1', eventTitle: values.title.trim() },
+        });
+      } else {
+        await createEvent(payload, token);
+        router.replace({
+          pathname: '/(app)',
+          params: { created: '1', eventTitle: values.title.trim() },
+        });
+      }
     } catch (error) {
       const failure = describeCreateEventError(error);
       setErrors(failure.fields);
       setGeneralError(failure.message);
+      if (failure.message === 'El evento ya no existe') {
+        setIsNotFound(true);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -122,9 +143,13 @@ export default function NewEventScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
             <View style={styles.header}>
-              <ThemedText type="subtitle">Nuevo evento</ThemedText>
+              <ThemedText type="subtitle">
+                {isEditing ? 'Editar evento' : 'Nuevo evento'}
+              </ThemedText>
               <ThemedText type="small" style={styles.subtitle}>
-                Organiza tus actividades diarias en tu agenda
+                {isEditing
+                  ? 'Modifica los datos de tu evento en tu agenda'
+                  : 'Organiza tus actividades diarias en tu agenda'}
               </ThemedText>
             </View>
 
@@ -135,6 +160,16 @@ export default function NewEventScreen() {
                   { backgroundColor: palette.error + '1A', borderColor: palette.error },
                 ]}>
                 <ThemedText style={{ color: palette.error }}>{generalError}</ThemedText>
+                {isNotFound && (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => router.replace('/(app)')}
+                    style={{ marginTop: 8 }}>
+                    <ThemedText style={{ color: palette.primary, fontWeight: '600' }}>
+                      ← Volver al calendario
+                    </ThemedText>
+                  </Pressable>
+                )}
               </View>
             )}
 
@@ -281,7 +316,7 @@ export default function NewEventScreen() {
 
             <View style={styles.actions}>
               <Button
-                title="Crear evento"
+                title={isEditing ? 'Guardar cambios' : 'Crear evento'}
                 onPress={handleSubmit}
                 loading={submitting}
               />

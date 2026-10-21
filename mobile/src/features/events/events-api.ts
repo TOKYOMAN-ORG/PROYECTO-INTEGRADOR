@@ -43,6 +43,28 @@ export async function getEvents(
   });
 }
 
+export async function updateEvent(
+  id: string,
+  input: CreateEventInput,
+  token: string,
+): Promise<Event> {
+  if (!token) throw new ApiError(401, 'No hay token de sesión');
+  return request<Event>(`/api/events/${id}`, {
+    method: 'PUT',
+    body: input,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function deleteEvent(id: string, token: string): Promise<void> {
+  if (!token) throw new ApiError(401, 'No hay token de sesión');
+  await request<void>(`/api/events/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+
 
 export type CreateEventFailure = {
   fields: CreateEventFormErrors;
@@ -71,6 +93,10 @@ export function describeCreateEventError(error: unknown): CreateEventFailure {
   if (error instanceof ApiError) {
     if (error.status === 401) {
       return { fields: {}, message: SESSION_EXPIRED };
+    }
+
+    if (error.status === 404) {
+      return { fields: {}, message: 'El evento ya no existe' };
     }
 
     if (error.status === 400) {

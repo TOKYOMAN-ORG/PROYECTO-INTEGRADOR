@@ -1,12 +1,14 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
   Param,
   ParseUUIDPipe,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
@@ -48,6 +50,24 @@ export class EventsController {
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<Event> {
     return this.eventsService.findOne(req.user.id, id);
+  }
+
+  @Put(':id')
+  async update(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Body() dto: CreateEventDto,
+  ): Promise<Event> {
+    return this.eventsService.update(id, req.user.id, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ): Promise<void> {
+    await this.eventsService.remove(id, req.user.id);
   }
 }
 
