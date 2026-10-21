@@ -10,6 +10,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 import { classifyRestoreError, getMe, login, type LoginInput, type RestoreFailure } from './auth-api.ts';
 import { deleteToken, getToken } from '../../storage/secure-token-storage.ts';
+import { onSessionExpired } from '../../services/http-client.ts';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -20,6 +21,10 @@ type AuthContextValue = {
   status: AuthStatus;
   /** Presente cuando la validación de la sesión falló por un motivo distinto a un 401; ver `retryRestore`. */
   sessionError: SessionError | null;
+  /** Indica si la sesión fue cerrada debido a un 401 recibido en una petición autenticada (SCRUM-52). */
+  sessionExpired: boolean;
+  /** Limpia el indicador de sesión expirada. */
+  clearSessionExpired: () => void;
   /** Reintenta restaurar la sesión tras un fallo controlado. */
   retryRestore: () => void;
   /** Establece una sesión autenticada para un `token` ya persistido (SCRUM-29). */
@@ -41,6 +46,7 @@ export function useAuth(): AuthContextValue {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [sessionError, setSessionError] = useState<SessionError | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [restoreAttempt, setRestoreAttempt] = useState(0);
   // Copia en memoria del token de la sesión vigente; la persistencia vive en SecureStore. No se expone por contexto.
   const tokenRef = useRef<string | null>(null);
@@ -90,11 +96,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [restoreAttempt]);
 
+  // Interceptor de 401 en peticiones autenticadas: borra la sesión y notifica expiración (SCRUM-52).
+  useEffect(() => {
+    return onSessionExpired(() => {
+      tokenRef.current = null;
+      setSessionExpired(true);
+      setSessionError(null);
+      setStatus('unauthenticated');
+    });
+  }, []);
+
   const retryRestore = useCallback(() => setRestoreAttempt((attempt) => attempt + 1), []);
+
+  const clearSessionExpired = useCallback(() => setSessionExpired(false), []);
 
   const signIn = useCallback((token: string) => {
     tokenRef.current = token;
     setSessionError(null);
+    setSessionExpired(false);
     setStatus('authenticated');
   }, []);
 
@@ -112,12 +131,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await deleteToken();
     tokenRef.current = null;
     setSessionError(null);
+    setSessionExpired(false);
     setStatus('unauthenticated');
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ status, sessionError, retryRestore, signIn, signInWithCredentials, signOut }),
-    [status, sessionError, retryRestore, signIn, signInWithCredentials, signOut],
+    () => ({
+      status,
+      sessionError,
+      sessionExpired,
+      clearSessionExpired,
+      retryRestore,
+      signIn,
+      signInWithCredentials,
+      signOut,
+    }),
+    [
+      status,
+      sessionError,
+      sessionExpired,
+      clearSessionExpired,
+      retryRestore,
+      signIn,
+      signInWithCredentials,
+      signOut,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
