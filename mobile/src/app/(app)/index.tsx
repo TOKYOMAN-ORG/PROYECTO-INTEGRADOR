@@ -1,5 +1,6 @@
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Platform, StyleSheet } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
@@ -30,6 +31,11 @@ function confirmSignOut(): Promise<boolean> {
 }
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const { created, eventTitle } = useLocalSearchParams<{
+    created?: string;
+    eventTitle?: string;
+  }>();
   const { signOut } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
 
@@ -52,8 +58,34 @@ export default function HomeScreen() {
         <ThemedText type="title" style={styles.title}>
           SecurePlan
         </ThemedText>
-        <ThemedText style={styles.centerText}>Sesión iniciada.</ThemedText>
-        <Button title="Cerrar sesión" onPress={handleSignOut} loading={signingOut} />
+        <ThemedText style={styles.centerText}>Tu agenda de productividad segura</ThemedText>
+
+        {created === '1' && (
+          <View style={styles.confirmationBox}>
+            <ThemedText style={styles.confirmationText}>
+              ✓ Evento {eventTitle ? `«${eventTitle}»` : ''} creado exitosamente
+            </ThemedText>
+          </View>
+        )}
+
+        <View style={styles.actions}>
+          <Button
+            title="+ Crear evento"
+            onPress={() => router.push('/(app)/events/new' as any)}
+          />
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              { opacity: signingOut ? 0.6 : pressed ? 0.85 : 1 },
+            ]}
+            onPress={handleSignOut}
+            disabled={signingOut}>
+            <ThemedText type="default">
+              {signingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
+            </ThemedText>
+          </Pressable>
+        </View>
       </SafeAreaView>
     </ThemedView>
   );
@@ -76,4 +108,34 @@ const styles = StyleSheet.create({
   centerText: {
     textAlign: 'center',
   },
+  confirmationBox: {
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    backgroundColor: '#E8F5E9',
+    borderRadius: Spacing.one,
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+    marginTop: Spacing.one,
+  },
+  confirmationText: {
+    color: '#2E7D32',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  actions: {
+    width: '100%',
+    maxWidth: 320,
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  secondaryButton: {
+    minHeight: 48,
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
 });
+
