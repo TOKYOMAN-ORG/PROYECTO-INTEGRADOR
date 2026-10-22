@@ -1,0 +1,315 @@
+{
+  "info": {
+    "name": "SecurePlan — SCRUM-38 / SCRUM-54: Casos anómalos de eventos (Sprint 2)",
+    "description": "Colección de peticiones anómalas contra la API de eventos para verificar mitigación demostrada de ataques IDOR, inyecciones SQL, mass assignment y tokens anómalos.\n\nRequisitos:\n1. Backend en ejecución en http://localhost:3001 (o variable `base_url`).\n2. Dos usuarios de prueba registrados (Usuario A y Usuario B) con sus respectivos tokens JWT en las variables `token_usuario_a` y `token_usuario_b`.\n3. Un evento perteneciente al Usuario B en `evento_id_usuario_b` y uno del Usuario A en `evento_id_usuario_a`.\n\nNinguna respuesta expone trazas internas, nombres de tablas ni errores 5xx.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3001/api", "type": "string" },
+    { "key": "token_usuario_a", "value": "{{token_usuario_a}}", "type": "string" },
+    { "key": "token_usuario_b", "value": "{{token_usuario_b}}", "type": "string" },
+    { "key": "token_alterado", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZW1vLWlkIiwiZXhwIjoyMDgwMDAwMDAwfQ.FIRMA_INVALIDA_XYZ", "type": "string" },
+    { "key": "token_expirado", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZW1vLWlkIiwiZXhwIjoxNTAwMDAwMDAwfQ.FIRMA_EXPIRADA_ABC", "type": "string" },
+    { "key": "evento_id_usuario_a", "value": "{{evento_id_usuario_a}}", "type": "string" },
+    { "key": "evento_id_usuario_b", "value": "{{evento_id_usuario_b}}", "type": "string" },
+    { "key": "id_no_uuid", "value": "123-no-es-un-uuid-valido", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "1. IDOR — GET evento de otro usuario (Usuario A lee evento de B) → 404",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token_usuario_a}}" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/events/{{evento_id_usuario_b}}",
+          "host": ["{{base_url}}"],
+          "path": ["events", "{{evento_id_usuario_b}}"]
+        },
+        "description": "Criterio IDOR: el Usuario A no puede acceder al evento del Usuario B. La API debe responder 404 Not Found para no divulgar la existencia del recurso ajeno."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 404 Not Found', () => pm.response.to.have.status(404));",
+              "pm.test('Mensaje de error controlado', () => pm.expect(pm.response.json().message).to.eql('Evento no encontrado'));",
+              "pm.test('No filtra información ni expone 5xx', () => pm.expect(pm.response.code).to.be.below(500));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. IDOR — PUT evento de otro usuario (Usuario A modifica evento de B) → 404",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token_usuario_a}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Intento de alteración maliciosa por Usuario A\",\n  \"description\": \"Sobreescritura no autorizada\",\n  \"date\": \"2026-10-30\",\n  \"time\": \"12:00\",\n  \"category\": \"trabajo\",\n  \"priority\": \"alta\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/events/{{evento_id_usuario_b}}",
+          "host": ["{{base_url}}"],
+          "path": ["events", "{{evento_id_usuario_b}}"]
+        },
+        "description": "Criterio IDOR: el Usuario A no puede modificar el evento del Usuario B. La API responde 404 y el registro en la base de datos permanece idéntico."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 404 Not Found', () => pm.response.to.have.status(404));",
+              "pm.test('Mensaje de error controlado', () => pm.expect(pm.response.json().message).to.eql('Evento no encontrado'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. IDOR — DELETE evento de otro usuario (Usuario A elimina evento de B) → 404",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token_usuario_a}}" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/events/{{evento_id_usuario_b}}",
+          "host": ["{{base_url}}"],
+          "path": ["events", "{{evento_id_usuario_b}}"]
+        },
+        "description": "Criterio IDOR: el Usuario A no puede eliminar el evento del Usuario B. La API responde 404 y el registro permanece en PostgreSQL."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 404 Not Found', () => pm.response.to.have.status(404));",
+              "pm.test('Mensaje de error controlado', () => pm.expect(pm.response.json().message).to.eql('Evento no encontrado'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Validación UUID — GET con ID inválido (no UUID) → 400",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token_usuario_a}}" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/events/{{id_no_uuid}}",
+          "host": ["{{base_url}}"],
+          "path": ["events", "{{id_no_uuid}}"]
+        },
+        "description": "Validación estricta de parámetros de ruta: ParseUUIDPipe rechaza identificadores no UUID con 400 Bad Request antes de consultar la base de datos."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 400 Bad Request', () => pm.response.to.have.status(400));",
+              "pm.test('Error indica formato UUID esperado', () => pm.expect(pm.response.text()).to.include('UUID'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Mass Assignment — POST /events con propiedad userId en cuerpo → 400",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token_usuario_a}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Evento con suplantación de userId\",\n  \"description\": \"Intento de asignación masiva\",\n  \"date\": \"2026-10-31\",\n  \"time\": \"10:00\",\n  \"category\": \"trabajo\",\n  \"priority\": \"alta\",\n  \"userId\": \"00000000-0000-4000-8000-000000000099\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/events",
+          "host": ["{{base_url}}"],
+          "path": ["events"]
+        },
+        "description": "Prevención de asignación masiva: el DTO no expone userId y ValidationPipe configurado con whitelist/forbidNonWhitelisted rechaza la petición con 400."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 400 Bad Request', () => pm.response.to.have.status(400));",
+              "pm.test('Detalla error en propiedad userId', () => pm.expect(pm.response.json().errors).to.have.property('userId'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Inyección SQL — POST /events con carga ' OR '1'='1 en título → 201 (Texto literal)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token_usuario_a}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"' OR '1'='1\",\n  \"description\": \"Prueba de inyección SQL clásica\",\n  \"date\": \"2026-10-31\",\n  \"time\": \"14:00\",\n  \"category\": \"trabajo\",\n  \"priority\": \"media\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/events",
+          "host": ["{{base_url}}"],
+          "path": ["events"]
+        },
+        "description": "Mitigación de inyección SQL mediante consultas preparadas ($1, $2): el payload se almacena como texto literal sin alterar la lógica de la consulta ni exponer otros registros."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 201 Created', () => pm.response.to.have.status(201));",
+              "pm.test('Título se guarda literalmente', () => pm.expect(pm.response.json().title).to.eql(\"' OR '1'='1\"));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Inyección SQL — POST /events con carga '; DROP TABLE events;-- en descripción → 201 (Texto literal)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token_usuario_a}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Evento con inyección destructiva\",\n  \"description\": \"'; DROP TABLE events;--\",\n  \"date\": \"2026-10-31\",\n  \"time\": \"15:00\",\n  \"category\": \"estudio\",\n  \"priority\": \"alta\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/events",
+          "host": ["{{base_url}}"],
+          "path": ["events"]
+        },
+        "description": "Mitigación de inyección SQL destructiva: la tabla events permanece intacta y la descripción se persiste como texto plano."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 201 Created', () => pm.response.to.have.status(201));",
+              "pm.test('Descripción se guarda literalmente', () => pm.expect(pm.response.json().description).to.eql(\"'; DROP TABLE events;--\"));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Token ausente — GET /events sin cabecera Authorization → 401",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/events",
+          "host": ["{{base_url}}"],
+          "path": ["events"]
+        },
+        "description": "Verificación de seguridad: peticiones no autenticadas son bloqueadas por JwtAuthGuard con 401 Unauthorized."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 401 Unauthorized', () => pm.response.to.have.status(401));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Token alterado — POST /events con firma JWT manipulada → 401",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token_alterado}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Intento con token alterado\",\n  \"date\": \"2026-10-31\",\n  \"time\": \"16:00\",\n  \"category\": \"personal\",\n  \"priority\": \"baja\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/events",
+          "host": ["{{base_url}}"],
+          "path": ["events"]
+        },
+        "description": "Verificación de firma criptográfica: cualquier alteración de la firma o payload invalida el token y resulta en 401."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 401 Unauthorized', () => pm.response.to.have.status(401));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Token expirado — GET /events/:id con timestamp exp vencido → 401",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token_expirado}}" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/events/{{evento_id_usuario_a}}",
+          "host": ["{{base_url}}"],
+          "path": ["events", "{{evento_id_usuario_a}}"]
+        },
+        "description": "Verificación de expiración: tokens con exp en el pasado son rechazados de inmediato con 401."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Responde 401 Unauthorized', () => pm.response.to.have.status(401));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ]
+}

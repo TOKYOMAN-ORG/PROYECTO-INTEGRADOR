@@ -107,7 +107,121 @@ curl -i http://localhost:3000/api/auth/me -H 'Authorization: Bearer <accessToken
 Para proteger otra ruta basta `@UseGuards(JwtAuthGuard)` (`backend/src/auth/jwt-auth.guard.ts`); el módulo que la declare
 debe importar `AuthModule`. En la app, el token se guarda solo en Expo SecureStore (`mobile/src/storage/secure-token-storage.ts`).
 
-### 5. Iniciar la app móvil
+### 5. Módulo de Eventos (Endpoints de Agenda)
+
+Todos los endpoints de eventos requieren autenticación mediante JWT (`Authorization: Bearer <accessToken>`) y aíslan de forma estricta los datos entre usuarios (mitigación IDOR: si un evento no pertenece al usuario autenticado, la API responde `404 Not Found`).
+
+#### Crear un evento (`POST /api/events`)
+
+Crea un nuevo evento asociado automáticamente al usuario autenticado. El campo `userId` no se acepta en el cuerpo (protección contra *Mass Assignment*).
+
+```bash
+curl -i -X POST http://localhost:3000/api/events \
+  -H 'Authorization: Bearer <accessToken>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "title": "Reunión de planificación",
+    "description": "Revisión de historias de usuario del Sprint 2",
+    "date": "2026-10-25",
+    "time": "10:00",
+    "category": "trabajo",
+    "priority": "alta"
+  }'
+```
+
+| Campo | Tipo | Requisitos |
+|---|---|---|
+| `title` | `string` | Obligatorio. Longitud entre 1 y 100 caracteres. |
+| `description` | `string` | Opcional. Máximo 500 caracteres (o `null`). |
+| `date` | `string` | Obligatorio. Formato de fecha ISO `YYYY-MM-DD`. |
+| `time` | `string` | Obligatorio. Formato de 24 horas `HH:mm`. |
+| `category` | `string` | Obligatorio. Uno de: `trabajo`, `estudio`, `personal`, `salud`, `otro`. |
+| `priority` | `string` | Obligatorio. Uno de: `baja`, `media`, `alta`. |
+
+| Respuesta | Cuándo |
+|---|---|
+| `201 Created` | Evento creado; devuelve el objeto con `{ id, userId, title, description, date, time, category, priority, createdAt, updatedAt }`. |
+| `400 Bad Request` | Fallo de validación por campo o intento de inyectar `userId` u otros campos ajenos. |
+| `401 Unauthorized` | Token ausente, firma alterada o vigencia expirada. |
+
+#### Listar eventos (`GET /api/events`)
+
+Obtiene la lista de eventos del usuario autenticado, ordenada cronológicamente (`date ASC, time ASC`). Permite filtrar por rango de fechas mediante los parámetros opcionales `from` y `to`.
+
+```bash
+curl -i 'http://localhost:3000/api/events?from=2026-10-01&to=2026-10-31' \
+  -H 'Authorization: Bearer <accessToken>'
+```
+
+| Parámetro Query | Tipo | Requisitos |
+|---|---|---|
+| `from` | `string` | Opcional. Fecha inicio en formato `YYYY-MM-DD`. |
+| `to` | `string` | Opcional. Fecha fin en formato `YYYY-MM-DD`. No puede ser anterior a `from`. |
+
+| Respuesta | Cuándo |
+|---|---|
+| `200 OK` | Arreglo de eventos (JSON array); si no hay eventos devuelve `[]`. Solo incluye eventos del usuario autenticado. |
+| `400 Bad Request` | `from` es posterior a `to` o formato de fecha inválido. |
+| `401 Unauthorized` | Token ausente, expirado o manipulado. |
+
+#### Obtener detalle de un evento (`GET /api/events/:id`)
+
+Consulta un evento específico por su identificador único.
+
+```bash
+curl -i http://localhost:3000/api/events/99999999-9999-4000-8000-000000000001 \
+  -H 'Authorization: Bearer <accessToken>'
+```
+
+| Respuesta | Cuándo |
+|---|---|
+| `200 OK` | Devuelve el evento solicitado con sus metadatos y fechas formateadas. |
+| `400 Bad Request` | El parámetro `:id` no tiene un formato UUID v4 válido. |
+| `401 Unauthorized` | Token ausente, alterado o expirado. |
+| `404 Not Found` | El evento no existe o pertenece a otro usuario (*mitigación IDOR*). |
+
+#### Actualizar un evento (`PUT /api/events/:id`)
+
+Actualiza los datos de un evento existente perteneciente al usuario autenticado.
+
+```bash
+curl -i -X PUT http://localhost:3000/api/events/99999999-9999-4000-8000-000000000001 \
+  -H 'Authorization: Bearer <accessToken>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "title": "Reunión de planificación (Reprogramada)",
+    "description": "Nueva hora acordada",
+    "date": "2026-10-26",
+    "time": "11:30",
+    "category": "trabajo",
+    "priority": "alta"
+  }'
+```
+
+| Respuesta | Cuándo |
+|---|---|
+| `200 OK` | Evento actualizado exitosamente; refleja el nuevo `updatedAt`. |
+| `400 Bad Request` | Datos inválidos, `:id` no UUID o intento de incluir `userId`. |
+| `401 Unauthorized` | Token ausente, alterado o expirado. |
+| `404 Not Found` | El evento no existe o pertenece a otro usuario (*mitigación IDOR*). |
+
+#### Eliminar un evento (`DELETE /api/events/:id`)
+
+Elimina definitivamente un evento perteneciente al usuario autenticado.
+
+```bash
+curl -i -X DELETE http://localhost:3000/api/events/99999999-9999-4000-8000-000000000001 \
+  -H 'Authorization: Bearer <accessToken>'
+```
+
+| Respuesta | Cuándo |
+|---|---|
+| `204 No Content` | Evento eliminado exitosamente (sin cuerpo de respuesta). |
+| `400 Bad Request` | El parámetro `:id` no es un UUID v4 válido. |
+| `401 Unauthorized` | Token ausente, alterado o expirado. |
+| `404 Not Found` | El evento no existe, pertenece a otro usuario (*mitigación IDOR*) o ya fue eliminado previamente. |
+
+### 6. Iniciar la app móvil
 
 ```bash
 cd mobile
