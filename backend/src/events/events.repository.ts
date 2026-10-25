@@ -96,6 +96,28 @@ export class EventsRepository {
     return rows;
   }
 
+  /** Todos los eventos del usuario para exportar (SCRUM-66); `userId` siempre proviene del JWT. */
+  async findAllByUserIdForExport(userId: string): Promise<Event[]> {
+    const { rows } = await this.database.query<Event>(
+      `SELECT
+         id,
+         user_id AS "userId",
+         title,
+         description,
+         to_char(date, 'YYYY-MM-DD') AS date,
+         to_char(time, 'HH24:MI') AS time,
+         category,
+         priority,
+         created_at AS "createdAt",
+         updated_at AS "updatedAt"
+       FROM events
+       WHERE user_id = $1
+       ORDER BY date ASC, time ASC`,
+      [userId],
+    );
+    return rows;
+  }
+
   async findByIdAndUserId(
     id: string,
     userId: string,

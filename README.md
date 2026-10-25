@@ -221,6 +221,30 @@ curl -i -X DELETE http://localhost:3000/api/events/99999999-9999-4000-8000-00000
 | `401 Unauthorized` | Token ausente, alterado o expirado. |
 | `404 Not Found` | El evento no existe, pertenece a otro usuario (*mitigación IDOR*) o ya fue eliminado previamente. |
 
+#### Exportar la agenda (`GET /api/events/export?format=json|csv`)
+
+Descarga todos los eventos del usuario autenticado, ordenados por fecha y hora, como archivo JSON o CSV. El formato
+se elige con el patrón **Strategy** (`backend/src/events/export/`): cada formato es una clase que implementa
+`ExportStrategy`, y agregar uno nuevo solo requiere su clase y registrarla en `EXPORT_STRATEGIES` (`EventsModule`).
+El archivo contiene `id`, `title`, `description`, `date`, `time`, `category` y `priority`; nunca `userId` ni fechas de
+auditoría.
+
+| Parámetro | Ubicación | Obligatorio | Valores |
+|---|---|---|---|
+| `format` | query | Sí | `json` o `csv` (un solo valor) |
+
+```bash
+curl -i 'http://localhost:3000/api/events/export?format=csv' \
+  -H 'Authorization: Bearer <accessToken>' -o agenda.csv
+```
+
+| Respuesta | Cuándo |
+|---|---|
+| `200 OK` (JSON) | `Content-Type: application/json; charset=utf-8`, `Content-Disposition: attachment; filename="agenda.json"`; arreglo de eventos (`[]` si no hay). |
+| `200 OK` (CSV) | `Content-Type: text/csv; charset=utf-8`, `Content-Disposition: attachment; filename="agenda.csv"`; encabezado y una fila por evento (RFC 4180, `\r\n`). Los campos con coma, comillas o saltos de línea van entre comillas, y las celdas que empiezan con `=`, `+`, `-`, `@`, tabulador o retorno de carro llevan el prefijo `'` para que una hoja de cálculo no las ejecute como fórmula. |
+| `400 Bad Request` | `format` ausente, repetido o distinto de `json`/`csv`, o parámetros no permitidos; `errors.format` trae el detalle. |
+| `401 Unauthorized` | Token ausente, alterado o expirado. |
+
 ### 6. Iniciar la app móvil
 
 ```bash

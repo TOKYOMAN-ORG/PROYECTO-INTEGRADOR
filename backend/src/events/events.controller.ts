@@ -11,21 +11,28 @@ import {
   Put,
   Query,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import {
   JwtAuthGuard,
   type AuthenticatedRequest,
 } from '../auth/jwt-auth.guard.js';
 import { CreateEventDto } from './dto/create-event.dto.js';
 import { EventsFilterDto } from './dto/events-filter.dto.js';
+import { ExportEventsQueryDto } from './dto/export-events-query.dto.js';
 import type { Event } from './event.js';
 import { EventsService } from './events.service.js';
+import { EventsExportService } from './export/events-export.service.js';
 
 @Controller('events')
 @UseGuards(JwtAuthGuard)
 export class EventsController {
-  constructor(private readonly eventsService: EventsService) {}
+  constructor(
+    private readonly eventsService: EventsService,
+    private readonly eventsExportService: EventsExportService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -42,6 +49,25 @@ export class EventsController {
     @Query() filter: EventsFilterDto,
   ): Promise<Event[]> {
     return this.eventsService.findAll(req.user.id, filter);
+  }
+
+  // Debe declararse antes de `GET :id`; de lo contrario `ParseUUIDPipe` rechazaría `export` como id.
+  @Get('export')
+  async export(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: ExportEventsQueryDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<string> {
+    const file = await this.eventsExportService.export(
+      req.user.id,
+      query.format,
+    );
+    res.setHeader('Content-Type', file.contentType);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${file.filename}"`,
+    );
+    return file.content;
   }
 
   @Get(':id')
