@@ -4,6 +4,7 @@ import type { CreateEventDto } from './dto/create-event.dto.js';
 import type { Event } from './event.js';
 import { EventsController } from './events.controller.js';
 import type { EventsService } from './events.service.js';
+import type { EventsExportService } from './export/events-export.service.js';
 
 describe('EventsController', () => {
   const service = {
@@ -14,8 +15,11 @@ describe('EventsController', () => {
     remove: vi.fn(),
   };
 
+  const exportService = { export: vi.fn() };
+
   const controller = new EventsController(
     service as unknown as EventsService,
+    exportService as unknown as EventsExportService,
   );
 
   beforeEach(() => {
@@ -129,5 +133,31 @@ describe('EventsController', () => {
     await controller.remove(mockRequest, 'event-uuid-456');
 
     expect(service.remove).toHaveBeenCalledWith('event-uuid-456', 'user-uuid-123');
+  });
+
+  it('export delega en EventsExportService con el userId del token y fija Content-Type y Content-Disposition', async () => {
+    const mockRequest = {
+      user: { id: 'user-uuid-123', name: 'Ana', email: 'ana@example.com' },
+    } as AuthenticatedRequest;
+    const res = { setHeader: vi.fn() };
+    exportService.export.mockResolvedValue({
+      content: 'id,title',
+      contentType: 'text/csv; charset=utf-8',
+      filename: 'agenda.csv',
+    });
+
+    const body = await controller.export(
+      mockRequest,
+      { format: 'csv' },
+      res as unknown as Parameters<EventsController['export']>[2],
+    );
+
+    expect(exportService.export).toHaveBeenCalledWith('user-uuid-123', 'csv');
+    expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'text/csv; charset=utf-8');
+    expect(res.setHeader).toHaveBeenCalledWith(
+      'Content-Disposition',
+      'attachment; filename="agenda.csv"',
+    );
+    expect(body).toBe('id,title');
   });
 });
