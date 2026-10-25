@@ -4,6 +4,7 @@ import type {
   CreateEventFormErrors,
 } from './create-event-validation.ts';
 import type { Event, EventCategory, EventPriority } from './event-types.ts';
+import { eventsSubject } from './events-subject.ts';
 
 export type CreateEventInput = {
   title: string;
@@ -19,11 +20,13 @@ export async function createEvent(
   token: string,
 ): Promise<Event> {
   if (!token) throw new ApiError(401, 'No hay token de sesión');
-  return request<Event>('/api/events', {
+  const event = await request<Event>('/api/events', {
     method: 'POST',
     body: input,
     headers: { Authorization: `Bearer ${token}` },
   });
+  eventsSubject.notify({ type: 'created', event });
+  return event;
 }
 
 export async function getEvents(
@@ -37,10 +40,12 @@ export async function getEvents(
   if (to) params.set('to', to);
   const qs = params.toString();
   const endpoint = qs ? `/api/events?${qs}` : '/api/events';
-  return request<Event[]>(endpoint, {
+  const events = await request<Event[]>(endpoint, {
     method: 'GET',
     headers: { Authorization: `Bearer ${token}` },
   });
+  eventsSubject.notify({ type: 'loaded', events });
+  return events;
 }
 
 export async function updateEvent(
@@ -49,11 +54,13 @@ export async function updateEvent(
   token: string,
 ): Promise<Event> {
   if (!token) throw new ApiError(401, 'No hay token de sesión');
-  return request<Event>(`/api/events/${id}`, {
+  const event = await request<Event>(`/api/events/${id}`, {
     method: 'PUT',
     body: input,
     headers: { Authorization: `Bearer ${token}` },
   });
+  eventsSubject.notify({ type: 'updated', event });
+  return event;
 }
 
 export async function deleteEvent(id: string, token: string): Promise<void> {
@@ -62,6 +69,7 @@ export async function deleteEvent(id: string, token: string): Promise<void> {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
+  eventsSubject.notify({ type: 'deleted', id });
 }
 
 
