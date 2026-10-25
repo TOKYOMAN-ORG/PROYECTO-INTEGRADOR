@@ -11,6 +11,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { classifyRestoreError, getMe, login, type LoginInput, type RestoreFailure } from './auth-api.ts';
 import { deleteToken, getToken } from '../../storage/secure-token-storage.ts';
 import { onSessionExpired } from '../../services/http-client.ts';
+import { startReminders, stopReminders } from '../reminders/reminders-session.ts';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -96,9 +97,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [restoreAttempt]);
 
+  // Recordatorios ligados a la sesión (SCRUM-71): al autenticarse o restaurar la sesión se reprograman los próximos
+  // 30 días; al quedar sin sesión se cancelan todos. Con `sessionError` (sin red al arrancar) el token se conserva,
+  // así que los avisos ya programados también.
+  useEffect(() => {
+    if (status === 'authenticated' && tokenRef.current) {
+      void startReminders(tokenRef.current);
+    } else if (status === 'unauthenticated' && !sessionError) {
+      void stopReminders();
+    }
+  }, [status, sessionError]);
+
   // Interceptor de 401 en peticiones autenticadas: borra la sesión y notifica expiración (SCRUM-52).
   useEffect(() => {
     return onSessionExpired(() => {
+      void stopReminders();
       tokenRef.current = null;
       setSessionExpired(true);
       setSessionError(null);
@@ -129,6 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await deleteToken();
+    await stopReminders();
     tokenRef.current = null;
     setSessionError(null);
     setSessionExpired(false);
