@@ -25,6 +25,19 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## Endpoints de la API
+
+La documentación completa de rutas, cuerpos de petición y códigos de respuesta se encuentra en el [README principal](../README.md#5-módulo-de-eventos-endpoints-de-agenda):
+
+- `POST /api/auth/register` — Registro de usuarios
+- `POST /api/auth/login` — Autenticación y emisión de JWT
+- `GET /api/auth/me` — Perfil del usuario autenticado
+- `POST /api/events` — Creación de eventos (protegido, valida DTO y previene *Mass Assignment*)
+- `GET /api/events` — Listado cronológico de eventos propios con filtro `from`/`to`
+- `GET /api/events/:id` — Detalle de evento propio (protección IDOR)
+- `PUT /api/events/:id` — Actualización de evento propio (protección IDOR)
+- `DELETE /api/events/:id` — Eliminación de evento propio (protección IDOR)
+
 ## Project setup
 
 ```bash

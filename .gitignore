@@ -14,5 +14,9 @@
 Thumbs.db
 
 
-/docs
+# Documentación local ignorada por defecto, salvo las evidencias de los sprints:
+# SCRUM-9 exige que las evidencias queden versionadas en docs/evidencias/
+/docs/*
+!/docs/evidencias
+!/docs/postman
 

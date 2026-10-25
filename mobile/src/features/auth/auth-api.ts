@@ -27,6 +27,33 @@ export async function login(input: LoginInput): Promise<void> {
   if (!(await saveToken(accessToken))) throw new Error('No se pudo guardar el token de sesión');
 }
 
+export type AuthUser = { id: string; name: string; email: string };
+
+/**
+ * Obtiene el usuario de la sesión (`GET /api/auth/me`) validando el `token` con `Authorization: Bearer`.
+ * Rechaza con `ApiError` (401 si el token es inválido o expiró), o `NetworkError` si la API no se pudo alcanzar.
+ * Hasta SCRUM-37 (interceptores) la cabecera se adjunta a mano.
+ */
+export async function getMe(token: string): Promise<AuthUser> {
+  if (!token) throw new ApiError(401, 'No hay token de sesión');
+  return request<AuthUser>('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+}
+
+/** Clasifica un fallo de la validación de sesión al restaurarla (SCRUM-30). */
+export type RestoreFailure = 'invalid' | 'offline' | 'unknown';
+
+/**
+ * Decide qué hacer ante un fallo de `getMe` al arrancar:
+ * - `invalid` (401): el token ya no sirve → borrarlo y mostrar Login.
+ * - `offline` (sin red): el token puede seguir siendo válido → conservarlo y ofrecer reintento.
+ * - `unknown` (5xx u otro fallo): conservar el token y ofrecer reintento; no se cierra la sesión por un error transitorio.
+ */
+export function classifyRestoreError(error: unknown): RestoreFailure {
+  if (error instanceof ApiError && error.status === 401) return 'invalid';
+  if (error instanceof NetworkError) return 'offline';
+  return 'unknown';
+}
+
 export type RegisterFailure = {
   /** Errores para mostrar bajo cada campo. */
   fields: RegisterFormErrors;
