@@ -2,12 +2,14 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule, ObserveInstrument } from './app.module.js';
 import { configureApp } from './common/app-setup.js';
+import { AllExceptionsFilter } from './common/all-exceptions.filter.js';
 import type { AppConfigService } from './config/app-config.module.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     instrument: ObserveInstrument,
   });
+  app.useGlobalFilters(new AllExceptionsFilter());
   configureApp(app);
   // La web de Expo se sirve en otro origen/puerto (p. ej. http://localhost:8081) y el navegador exige cabeceras
   // CORS antes de exponer la respuesta. La API autentica con Bearer tokens (no cookies), así que abrir el origen es seguro.
