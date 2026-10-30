@@ -13,6 +13,7 @@ import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
 import { getScreenLayoutConfig } from '@/components/screen-model';
 import { useTheme } from '@/hooks/use-theme';
+import { useSizeClass } from '@/utils/window-size';
 
 export interface ScreenProps {
   children: ReactNode;
@@ -43,6 +44,7 @@ export function Screen({
   contentContainerStyle,
 }: ScreenProps) {
   const theme = useTheme();
+  const sizeConfig = useSizeClass();
   const config = getScreenLayoutConfig(Platform.OS === 'ios');
 
   const resolvedEdges = edges ?? (config.defaultEdges as Edge[]);
@@ -52,8 +54,8 @@ export function Screen({
       style={[
         styles.maxWidthWrapper,
         {
-          maxWidth: config.maxWidth,
-          paddingHorizontal: config.paddingHorizontal,
+          maxWidth: sizeConfig.maxWidth,
+          paddingHorizontal: sizeConfig.paddingHorizontal,
           paddingVertical: config.paddingVertical,
         },
         contentContainerStyle,
