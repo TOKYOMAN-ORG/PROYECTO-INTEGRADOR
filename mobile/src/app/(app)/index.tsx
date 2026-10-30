@@ -26,6 +26,7 @@ import { deleteEvent, getEvents } from '@/features/events/events-api';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, NetworkError } from '@/services/http-client';
 import { getToken } from '@/storage/secure-token-storage';
+import { useSizeClass } from '@/utils/window-size';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -36,6 +37,7 @@ export default function HomeScreen() {
   }>();
   const { signOut } = useAuth();
   const theme = useTheme();
+  const sizeConfig = useSizeClass();
   const confirm = useConfirm();
   const toast = useToast();
 
@@ -270,65 +272,72 @@ export default function HomeScreen() {
         </View>
       }
       contentContainerStyle={styles.contentContainer}>
-      {/* Componente Calendario */}
-      <MonthCalendar
-        year={currentYear}
-        month={currentMonth}
-        selectedDate={selectedDate}
-        eventsByDate={eventsByDate}
-        onSelectDate={handleSelectDay}
-        onChangeMonth={(y, m) => {
-          setCurrentYear(y);
-          setCurrentMonth(m);
-          setLoading(true);
-        }}
-        onToday={handleGoToToday}
-      />
+      {/* Disposición adaptable: 2 columnas en pantallas expandidas (>= 840 dp), 1 columna en teléfonos */}
+      <View style={sizeConfig.isExpanded ? styles.twoColumnWrap : styles.singleColumnWrap}>
+        <View style={sizeConfig.isExpanded ? styles.leftColumn : styles.fullColumn}>
+          {/* Componente Calendario */}
+          <MonthCalendar
+            year={currentYear}
+            month={currentMonth}
+            selectedDate={selectedDate}
+            eventsByDate={eventsByDate}
+            onSelectDate={handleSelectDay}
+            onChangeMonth={(y, m) => {
+              setCurrentYear(y);
+              setCurrentMonth(m);
+              setLoading(true);
+            }}
+            onToday={handleGoToToday}
+          />
+        </View>
 
-      {/* Sección del día seleccionado */}
-      <View style={styles.sectionHeader}>
-        <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
-          Eventos para {formatDisplayDate(selectedDate)}
-        </ThemedText>
-        <ThemedText style={[styles.sectionCount, { color: theme.textSecondary }]}>
-          ({selectedDateEvents.length})
-        </ThemedText>
-      </View>
+        <View style={sizeConfig.isExpanded ? styles.rightColumn : styles.fullColumn}>
+          {/* Sección del día seleccionado */}
+          <View style={styles.sectionHeader}>
+            <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
+              Eventos para {formatDisplayDate(selectedDate)}
+            </ThemedText>
+            <ThemedText style={[styles.sectionCount, { color: theme.textSecondary }]}>
+              ({selectedDateEvents.length})
+            </ThemedText>
+          </View>
 
-      {/* Estados: Carga, Error, Vacío o Lista */}
-      {loading ? (
-        <LoadingState message="Cargando tu agenda..." />
-      ) : fetchError ? (
-        <ErrorState
-          title="Error al cargar eventos"
-          message={fetchError}
-          onRetry={() => {
-            setLoading(true);
-            setReloadToken((t) => t + 1);
-          }}
-        />
-      ) : selectedDateEvents.length === 0 ? (
-        <EmptyState
-          icon="calendar"
-          title="No hay eventos para este día"
-          message="Aprovecha tu día libre o programa una nueva actividad."
-          actionLabel="Programar un evento"
-          onAction={() => router.push('/(app)/events/new' as any)}
-        />
-      ) : (
-        <View style={styles.eventsList}>
-          {selectedDateEvents.map((item) => (
-            <EventCard
-              key={item.id}
-              event={item}
-              onPress={(ev) => {
-                setDeleteError(null);
-                setSelectedEvent(ev);
+          {/* Estados: Carga, Error, Vacío o Lista */}
+          {loading ? (
+            <LoadingState message="Cargando tu agenda..." />
+          ) : fetchError ? (
+            <ErrorState
+              title="Error al cargar eventos"
+              message={fetchError}
+              onRetry={() => {
+                setLoading(true);
+                setReloadToken((t) => t + 1);
               }}
             />
-          ))}
+          ) : selectedDateEvents.length === 0 ? (
+            <EmptyState
+              icon="calendar"
+              title="No hay eventos para este día"
+              message="Aprovecha tu día libre o programa una nueva actividad."
+              actionLabel="Programar un evento"
+              onAction={() => router.push('/(app)/events/new' as any)}
+            />
+          ) : (
+            <View style={styles.eventsList}>
+              {selectedDateEvents.map((item) => (
+                <EventCard
+                  key={item.id}
+                  event={item}
+                  onPress={(ev) => {
+                    setDeleteError(null);
+                    setSelectedEvent(ev);
+                  }}
+                />
+              ))}
+            </View>
+          )}
         </View>
-      )}
+      </View>
 
       {/* Modal de Detalle del Evento */}
       <EventDetailModal
@@ -404,5 +413,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 6,
+  },
+  twoColumnWrap: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 24,
+    width: '100%',
+  },
+  singleColumnWrap: {
+    width: '100%',
+  },
+  leftColumn: {
+    flex: 1,
+    maxWidth: 440,
+  },
+  rightColumn: {
+    flex: 1.2,
+  },
+  fullColumn: {
+    width: '100%',
   },
 });
