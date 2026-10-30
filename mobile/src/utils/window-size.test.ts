@@ -20,20 +20,26 @@ describe('window-size utility (SCRUM-108)', () => {
   });
 
   it('resuelve la configuración de diseño para cada tamaño', () => {
+    const compactNarrow = getSizeClassConfig(320);
+    assert.equal(compactNarrow.isNarrow, true);
+
     const compactConfig = getSizeClassConfig(360);
     assert.equal(compactConfig.sizeClass, 'compact');
     assert.equal(compactConfig.isCompact, true);
+    assert.equal(compactConfig.isNarrow, false);
     assert.equal(compactConfig.paddingHorizontal, 16);
     assert.equal(compactConfig.numColumns, 1);
 
     const mediumConfig = getSizeClassConfig(768);
     assert.equal(mediumConfig.sizeClass, 'medium');
     assert.equal(mediumConfig.isMedium, true);
+    assert.equal(mediumConfig.isNarrow, false);
     assert.equal(mediumConfig.paddingHorizontal, 24);
 
     const expandedConfig = getSizeClassConfig(1024);
     assert.equal(expandedConfig.sizeClass, 'expanded');
     assert.equal(expandedConfig.isExpanded, true);
+    assert.equal(expandedConfig.isNarrow, false);
     assert.equal(expandedConfig.paddingHorizontal, 32);
     assert.equal(expandedConfig.numColumns, 2);
   });

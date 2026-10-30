@@ -113,6 +113,7 @@ export function MonthCalendar({
         {WEEKDAY_NAMES_SHORT.map((weekday, i) => (
           <View key={`${weekday}-${i}`} style={styles.weekdayCell}>
             <ThemedText
+              maxFontSizeMultiplier={1.3}
               style={[styles.weekdayText, { color: theme.textSecondary }]}>
               {weekday}
             </ThemedText>
@@ -163,6 +164,7 @@ export function MonthCalendar({
                   },
                 ]}>
                 <ThemedText
+                  maxFontSizeMultiplier={1.3}
                   style={[
                     styles.dayText,
                     {
@@ -252,14 +254,16 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   dayCell: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    minWidth: 36,
+    minHeight: 36,
+    borderRadius: 18,
+    paddingHorizontal: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dayText: {
     fontSize: 14,
+    textAlign: 'center',
   },
   dot: {
     width: 5,

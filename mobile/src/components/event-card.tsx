@@ -59,7 +59,10 @@ export function EventCard({
       </View>
 
       {/* Título del evento */}
-      <ThemedText style={[styles.title, { color: theme.text }]}>
+      <ThemedText
+        numberOfLines={2}
+        ellipsizeMode="tail"
+        style={[styles.title, { color: theme.text }]}>
         {event.title}
       </ThemedText>
 

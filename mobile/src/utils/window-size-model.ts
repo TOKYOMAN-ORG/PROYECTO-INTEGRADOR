@@ -7,6 +7,7 @@ export interface WindowSizeConfig {
   isCompact: boolean;
   isMedium: boolean;
   isExpanded: boolean;
+  isNarrow: boolean;
   numColumns: number;
 }
 
@@ -31,6 +32,7 @@ export function getSizeClass(width: number): WindowSizeClass {
  */
 export function getSizeClassConfig(width: number): WindowSizeConfig {
   const sizeClass = getSizeClass(width);
+  const isNarrow = width < 360;
 
   switch (sizeClass) {
     case 'expanded':
@@ -41,6 +43,7 @@ export function getSizeClassConfig(width: number): WindowSizeConfig {
         isCompact: false,
         isMedium: false,
         isExpanded: true,
+        isNarrow,
         numColumns: 2,
       };
     case 'medium':
@@ -51,6 +54,7 @@ export function getSizeClassConfig(width: number): WindowSizeConfig {
         isCompact: false,
         isMedium: true,
         isExpanded: false,
+        isNarrow,
         numColumns: 1,
       };
     case 'compact':
@@ -62,6 +66,7 @@ export function getSizeClassConfig(width: number): WindowSizeConfig {
         isCompact: true,
         isMedium: false,
         isExpanded: false,
+        isNarrow,
         numColumns: 1,
       };
   }

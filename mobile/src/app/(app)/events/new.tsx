@@ -30,6 +30,7 @@ import {
 } from '@/features/events/events-api';
 import { useTheme } from '@/hooks/use-theme';
 import { getToken } from '@/storage/secure-token-storage';
+import { useSizeClass } from '@/utils/window-size';
 
 const CATEGORY_OPTIONS: OptionItem<EventCategory>[] = [
   { value: 'trabajo', label: 'Trabajo', tone: 'trabajo' },
@@ -49,6 +50,7 @@ export default function NewEventScreen() {
   const router = useRouter();
   const theme = useTheme();
   const toast = useToast();
+  const { isNarrow } = useSizeClass();
 
   const titleInputRef = useRef<TextInput>(null);
   const descInputRef = useRef<TextInput>(null);
@@ -225,8 +227,8 @@ export default function NewEventScreen() {
       />
 
       {/* Selectores de Fecha y Hora con DateTimePicker nativo */}
-      <View style={styles.row}>
-        <View style={styles.halfCol}>
+      <View style={[styles.row, isNarrow && styles.column]}>
+        <View style={isNarrow ? styles.fullCol : styles.halfCol}>
           <DateField
             label="Fecha"
             required
@@ -235,7 +237,7 @@ export default function NewEventScreen() {
             error={errors.date}
           />
         </View>
-        <View style={styles.halfCol}>
+        <View style={isNarrow ? styles.fullCol : styles.halfCol}>
           <TimeField
             label="Hora"
             required
@@ -312,8 +314,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
+  column: {
+    flexDirection: 'column',
+    gap: 0,
+  },
   halfCol: {
     flex: 1,
+  },
+  fullCol: {
+    width: '100%',
   },
   buttonActions: {
     gap: 12,
