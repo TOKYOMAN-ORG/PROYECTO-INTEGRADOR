@@ -79,6 +79,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.backdrop}>
           <Pressable
+            accessibilityRole="button"
             accessibilityLabel="Cerrar cuadro de diálogo"
             style={styles.backdropDismiss}
             onPress={handleCancel}

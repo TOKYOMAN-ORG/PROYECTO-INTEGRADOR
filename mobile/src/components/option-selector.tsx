@@ -75,12 +75,12 @@ export function OptionSelector<T extends string | number>({
           return (
             <Pressable
               key={String(option.value)}
-              onPress={() => !disabled && onChange(option.value)}
-              disabled={disabled}
               accessibilityRole="radio"
               accessibilityState={{ selected: isSelected, disabled }}
               accessibilityLabel={accessibilityLabel}
               accessibilityHint={option.hint}
+              disabled={disabled}
+              onPress={() => !disabled && onChange(option.value)}
               style={[
                 styles.optionItem,
                 {

@@ -60,6 +60,7 @@ export function EventDetailModal({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.backdrop}>
         <Pressable
+          accessibilityRole="button"
           accessibilityLabel="Cerrar modal de detalle"
           style={styles.backdropDismiss}
           onPress={() => !deleting && onClose()}

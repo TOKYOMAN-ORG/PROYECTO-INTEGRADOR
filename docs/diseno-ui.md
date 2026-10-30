@@ -59,3 +59,30 @@ Documento de referencia técnica y arquitectura de diseño para la aplicación m
 3. **Estructura Estándar con `Screen`:** Toda ruta en `mobile/src/app/` debe envolver su contenido en `<Screen>`, asegurando gestión unificada de área segura y teclado.
 4. **Dimensiones Táctiles:** Ningún botón, chip o celda de calendario interactiva debe tener un tamaño menor a `44 × 44 dp`.
 5. **Pruebas de Contraste Automáticas:** Cualquier nuevo token de color debe integrarse en la suite de pruebas unitarias de contraste WCAG AA (`mobile/src/constants/theme.test.ts`).
+
+---
+
+## 5. Lista de Verificación de Accesibilidad (A11y Checklist — SCRUM-111)
+
+Esta lista audita todos los componentes nuevos construidos en el sprint para garantizar el cumplimiento de WCAG 2.1 AA, compatibilidad con lectores de pantalla (TalkBack / VoiceOver) y precisión táctil:
+
+| Componente | Rol Semántico (`accessibilityRole`) | Estados (`accessibilityState`) | Etiqueta / Pistas (`accessibilityLabel` / `Hint`) | Área Táctil Mínima | Elementos Decorativos Ocultos |
+|---|---|---|---|---|---|
+| **`Button`** | `button` | `disabled`, `busy` (loading) | `accessibilityLabel` del título o acción | $\ge 44 \times 44$ dp (`minHeight: 48` / `36` + `hitSlop: 6`) | Iconos secundarios sin anuncio redundante |
+| **`IconButton`** | `button` | `disabled` | Obligatorio vía prop `accessibilityLabel` | $\ge 44 \times 44$ dp (`minWidth: 44, minHeight: 44` + `hitSlop: 8`) | N/A (el botón expone la etiqueta semántica) |
+| **`Icon`** | `image` (cuando tiene label) o ninguno si es decorativo | N/A | Solo cuando `accessibilityLabel` se define | N/A (gráfico) | Oculto con `aria-hidden`, `accessibilityElementsHidden` si no tiene label |
+| **`TextField`** | Campo `TextInput` nativo | N/A | Label + obligatorio (`*`) + hint con error | $\ge 48$ dp altura de campo | Botón de revelar contraseña `button` con hitSlop $\ge 44$ |
+| **`DateField`** | `button` | `disabled` | Label + fecha formateada legible | $\ge 48$ dp altura de caja | Icono de calendario oculto |
+| **`TimeField`** | `button` | `disabled` | Label + hora legible | $\ge 48$ dp altura de caja | Icono de reloj oculto |
+| **`OptionSelector`** | `radio` | `selected`, `disabled` | Nombre de opción + estado seleccionado + hint | $\ge 44 \times 44$ dp (`minHeight: 44, minWidth: 44`) | Punto indicador de color oculto |
+| **`MonthCalendar` (Día)** | `button` | `selected` | "Día X de Mes, Año[, Hoy, N eventos, Prioridad P]" | $\ge 44 \times 44$ dp (`dayCellContainer minHeight: 44`) | Punto dot decorativo oculto |
+| **`Card`** | `button` (si `onPress`) | N/A | `accessibilityLabel` descriptivo agrupado | $\ge 44$ dp de altura | `accessible={true}` unifica elementos internos |
+| **`EventCard`** | `button` | N/A | "Evento: Título a las Hora, categoría C, prioridad P. Toca para ver detalles o editar." | Dimensiones de tarjeta completas | Hora e iconos decorativos agrupados |
+| **`ConfirmDialog`** | `alert` / `button` | N/A | "Cerrar cuadro de diálogo", botones con labels | Botones $\ge 48$ dp, backdrop touchable $\ge 44$ dp | N/A |
+| **`EventDetailModal`** | `modal` / `button` | N/A | "Cerrar detalle", "Cerrar modal de detalle", acciones | Botón cerrar con `IconButton` $\ge 44 \times 44$ dp | Iconos decorativos de metadatos ocultos |
+| **`Banner`** | `alert` | N/A | Mensaje del banner + live region `polite` | Botón cerrar $\ge 44 \times 44$ dp | Icono de estado decorativo oculto |
+| **`Toast`** | `alert` | N/A | Mensaje con `accessibilityLiveRegion="assertive"` | N/A (alerta visual) | N/A |
+| **`LoadingState`** | `progressbar` | `busy: true` | Mensaje de carga accesible | N/A | Spinner accesible |
+| **`ErrorState`** | `alert` | N/A | Título y mensaje de error | Botón reintentar $\ge 48$ dp | Icono decorativo de alerta oculto |
+| **`EmptyState`** | `summary` | N/A | Título y mensaje informativo | Botón de acción opcional $\ge 48$ dp | Icono decorativo oculto |
+

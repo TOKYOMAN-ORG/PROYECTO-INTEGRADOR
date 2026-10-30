@@ -36,34 +36,39 @@ export function Icon({
   const def = getIconDefinition(name);
   const resolvedColor = color ?? theme.text;
 
-  // En iOS y Android nativo, SymbolView de expo-symbols renderiza SF Symbols o Material Symbols
-  if (Platform.OS === 'ios') {
-    return (
-      <SymbolView
-        name={def.ios as SFSymbol}
-        size={size}
-        tintColor={resolvedColor}
-        style={style}
-      />
-    );
-  }
+  const isDecorative = !accessibilityLabel;
 
-  if (Platform.OS === 'android') {
+  // En iOS y Android nativo, SymbolView de expo-symbols renderiza SF Symbols o Material Symbols
+  if (Platform.OS === 'ios' || Platform.OS === 'android') {
     return (
-      <SymbolView
-        name={def.ios as SFSymbol}
-        size={size}
-        tintColor={resolvedColor}
-        style={style}
-      />
+      <View
+        accessible={!isDecorative}
+        accessibilityElementsHidden={isDecorative}
+        importantForAccessibility={isDecorative ? 'no' : 'yes'}
+        aria-hidden={isDecorative}
+        accessibilityRole={isDecorative ? undefined : 'image'}
+        accessibilityLabel={accessibilityLabel}>
+        <SymbolView
+          name={def.ios as SFSymbol}
+          size={size}
+          tintColor={resolvedColor}
+          style={style}
+        />
+      </View>
     );
   }
 
   // Fallback para Web / entorno de prueba
   return (
-    <View style={[styles.fallbackContainer, { width: size, height: size }, style]}>
+    <View
+      accessible={!isDecorative}
+      accessibilityElementsHidden={isDecorative}
+      importantForAccessibility={isDecorative ? 'no' : 'yes'}
+      aria-hidden={isDecorative}
+      accessibilityRole={isDecorative ? undefined : 'image'}
+      accessibilityLabel={accessibilityLabel}
+      style={[styles.fallbackContainer, { width: size, height: size }, style]}>
       <Text
-        accessibilityLabel={accessibilityLabel ?? def.defaultLabel}
         style={{ fontSize: size * 0.85, color: resolvedColor, textAlign: 'center' }}>
         {def.webFallback}
       </Text>

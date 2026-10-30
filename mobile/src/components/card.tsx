@@ -38,6 +38,7 @@ export function Card({
       <Pressable
         testID={testID}
         onPress={onPress}
+        accessible={true}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
         accessibilityHint={accessibilityHint}
