@@ -1,25 +1,32 @@
 import { Link, useRouter } from 'expo-router';
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useRef, useState } from 'react';
+import { StyleSheet, type TextInput, View } from 'react-native';
 
+import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
+import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { describeRegisterError, register } from '@/features/auth/auth-api';
 import {
-  validateRegister,
   type RegisterField,
   type RegisterFormErrors,
   type RegisterValues,
+  validateRegister,
 } from '@/features/auth/register-validation';
+import { useTheme } from '@/hooks/use-theme';
 
 const EMPTY_VALUES: RegisterValues = { name: '', email: '', password: '', confirmPassword: '' };
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const theme = useTheme();
+
+  const nameRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const confirmPasswordRef = useRef<TextInput>(null);
+
   const [values, setValues] = useState(EMPTY_VALUES);
   const [errors, setErrors] = useState<RegisterFormErrors>({});
   const [formError, setFormError] = useState<string>();
@@ -36,7 +43,18 @@ export default function RegisterScreen() {
 
     const found = validateRegister(values);
     setErrors(found);
-    if (Object.keys(found).length > 0) return;
+    if (Object.keys(found).length > 0) {
+      if (found.name) {
+        nameRef.current?.focus();
+      } else if (found.email) {
+        emailRef.current?.focus();
+      } else if (found.password) {
+        passwordRef.current?.focus();
+      } else if (found.confirmPassword) {
+        confirmPasswordRef.current?.focus();
+      }
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -50,101 +68,163 @@ export default function RegisterScreen() {
       const failure = describeRegisterError(error);
       setErrors(failure.fields);
       setFormError(failure.message);
+      if (failure.fields.name) {
+        nameRef.current?.focus();
+      } else if (failure.fields.email) {
+        emailRef.current?.focus();
+      } else if (failure.fields.password) {
+        passwordRef.current?.focus();
+      } else if (failure.fields.confirmPassword) {
+        confirmPasswordRef.current?.focus();
+      }
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <ThemedView style={styles.flex}>
-      <SafeAreaView style={styles.flex}>
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView
-            contentContainerStyle={styles.content}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}>
-            <ThemedText type="subtitle">Crear cuenta</ThemedText>
+    <Screen
+      scrollable={true}
+      contentContainerStyle={styles.content}>
+      {/* Encabezado con identidad de marca */}
+      <View style={styles.brandHeader}>
+        <ThemedText style={[styles.brandTitle, { color: theme.text }]}>
+          SecurePlan
+        </ThemedText>
+        <ThemedText style={[styles.brandSubtitle, { color: theme.textSecondary }]}>
+          Crea tu cuenta de productividad segura
+        </ThemedText>
+      </View>
 
-            <TextField
-              label="Nombre"
-              value={values.name}
-              onChangeText={update('name')}
-              error={errors.name}
-              autoComplete="name"
-              textContentType="name"
-              returnKeyType="next"
-            />
-            <TextField
-              label="Correo electrónico"
-              value={values.email}
-              onChangeText={update('email')}
-              error={errors.email}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="email"
-              textContentType="emailAddress"
-              returnKeyType="next"
-            />
-            <TextField
-              label="Contraseña"
-              value={values.password}
-              onChangeText={update('password')}
-              error={errors.password}
-              secureTextEntry
-              autoCapitalize="none"
-              autoComplete="new-password"
-              textContentType="newPassword"
-              returnKeyType="next"
-            />
-            <TextField
-              label="Confirmar contraseña"
-              value={values.confirmPassword}
-              onChangeText={update('confirmPassword')}
-              error={errors.confirmPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoComplete="new-password"
-              textContentType="newPassword"
-              returnKeyType="done"
-              onSubmitEditing={submit}
-            />
+      <View style={styles.formCard}>
+        <ThemedText style={[styles.formTitle, { color: theme.text }]}>
+          Crear cuenta
+        </ThemedText>
 
-            {formError ? (
-              <ThemedText themeColor="error" accessibilityLiveRegion="polite">
-                {formError}
-              </ThemedText>
-            ) : null}
+        {/* Banner de error general del registro */}
+        {formError && (
+          <View style={styles.bannerWrapper}>
+            <Banner tone="error" message={formError} />
+          </View>
+        )}
 
-            <Button title="Registrarme" onPress={submit} loading={submitting} />
+        {/* Campos con foco guiado */}
+        <TextField
+          ref={nameRef}
+          label="Nombre"
+          required
+          value={values.name}
+          onChangeText={update('name')}
+          error={errors.name}
+          autoComplete="name"
+          textContentType="name"
+          returnKeyType="next"
+          onSubmitEditing={() => emailRef.current?.focus()}
+        />
 
-            <Link href="/login" style={styles.link}>
-              <ThemedText type="linkPrimary">¿Ya tienes cuenta? Inicia sesión</ThemedText>
-            </Link>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </ThemedView>
+        <TextField
+          ref={emailRef}
+          label="Correo electrónico"
+          required
+          value={values.email}
+          onChangeText={update('email')}
+          error={errors.email}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="email"
+          textContentType="emailAddress"
+          returnKeyType="next"
+          onSubmitEditing={() => passwordRef.current?.focus()}
+        />
+
+        <TextField
+          ref={passwordRef}
+          label="Contraseña"
+          required
+          value={values.password}
+          onChangeText={update('password')}
+          error={errors.password}
+          secureTextEntry
+          autoCapitalize="none"
+          autoComplete="new-password"
+          textContentType="newPassword"
+          returnKeyType="next"
+          onSubmitEditing={() => confirmPasswordRef.current?.focus()}
+        />
+
+        <TextField
+          ref={confirmPasswordRef}
+          label="Confirmar contraseña"
+          required
+          value={values.confirmPassword}
+          onChangeText={update('confirmPassword')}
+          error={errors.confirmPassword}
+          secureTextEntry
+          autoCapitalize="none"
+          autoComplete="new-password"
+          textContentType="newPassword"
+          returnKeyType="done"
+          onSubmitEditing={submit}
+        />
+
+        <View style={styles.actions}>
+          <Button
+            title="Registrarme"
+            variant="primary"
+            size="md"
+            onPress={submit}
+            loading={submitting}
+          />
+
+          <Link href="/login" asChild>
+            <Button
+              title="¿Ya tienes cuenta? Inicia sesión"
+              variant="ghost"
+              size="md"
+              accessibilityLabel="¿Ya tienes cuenta? Inicia sesión aquí"
+            />
+          </Link>
+        </View>
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  // `flexGrow` centra el formulario en pantallas grandes y, en las pequeñas, deja que el scroll muestre todos los campos.
   content: {
     flexGrow: 1,
     justifyContent: 'center',
-    gap: Spacing.three,
-    padding: Spacing.four,
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    alignSelf: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20,
   },
-  link: {
+  brandHeader: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  brandTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  brandSubtitle: {
+    fontSize: 14,
+    marginTop: 4,
     textAlign: 'center',
+  },
+  formCard: {
+    width: '100%',
+  },
+  formTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  bannerWrapper: {
+    marginBottom: 16,
+  },
+  actions: {
+    gap: 12,
+    marginTop: 20,
   },
 });
