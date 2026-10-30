@@ -13,7 +13,10 @@ export type AppIconName =
   | 'warning'
   | 'info'
   | 'user'
-  | 'chevronRight';
+  | 'chevronRight'
+  | 'error'
+  | 'refresh'
+  | 'empty';
 
 export interface IconDefinition {
   ios: string;
@@ -112,6 +115,24 @@ export const IconRegistry: Record<AppIconName, IconDefinition> = {
     android: 'chevron_right',
     webFallback: '›',
     defaultLabel: 'Siguiente',
+  },
+  error: {
+    ios: 'exclamationmark.circle',
+    android: 'error',
+    webFallback: '!',
+    defaultLabel: 'Error',
+  },
+  refresh: {
+    ios: 'arrow.clockwise',
+    android: 'refresh',
+    webFallback: '↻',
+    defaultLabel: 'Reintentar',
+  },
+  empty: {
+    ios: 'tray',
+    android: 'inbox',
+    webFallback: '📭',
+    defaultLabel: 'Vacío',
   },
 };
 
