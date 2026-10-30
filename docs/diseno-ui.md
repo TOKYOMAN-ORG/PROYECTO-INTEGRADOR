@@ -86,3 +86,33 @@ Esta lista audita todos los componentes nuevos construidos en el sprint para gar
 | **`ErrorState`** | `alert` | N/A | Título y mensaje de error | Botón reintentar $\ge 48$ dp | Icono decorativo de alerta oculto |
 | **`EmptyState`** | `summary` | N/A | Título y mensaje informativo | Botón de acción opcional $\ge 48$ dp | Icono decorativo oculto |
 
+---
+
+## 6. Matriz de Dependencias de UI y Diagnóstico `expo-doctor` (SCRUM-115)
+
+Auditoría formal de paquetes instalados en `mobile/package.json` para reducir la superficie de ataque y asegurar compatibilidad estricta con Expo SDK 57:
+
+| Paquete | Estado | Justificación y Destino |
+|---|---|---|
+| `@expo/ui` | **Retirado** | Descartado en SCRUM-80 por incompatibilidad con el modelo de layout Flexbox y estilo nativo rígido. Eliminado de `package.json` con `npm uninstall`. |
+| `expo-glass-effect` | **Retirado** | No utilizado; el diseño se basa en tokens estándar de elevación y superficie semántica. Eliminado con `npm uninstall`. |
+| `expo-image` | **Retirado** | La aplicación utiliza iconos nativos vectoriales (`expo-symbols`) y assets locales optimizados. Eliminado con `npm uninstall`. |
+| `expo-web-browser` | **Retirado** | No se utiliza autenticación en navegador externo; se emplea almacenamiento de token directo con SecureStore. Eliminado con `npm uninstall`. |
+| `expo-symbols` | **Conservado / Usado** | Utilizado en `components/icon.tsx` para iconografía nativa (SF Symbols en iOS / Material Symbols en Android y fallback web). |
+| `@react-native-community/datetimepicker` | **Conservado / Usado** | Utilizado en `components/date-field.tsx` y `components/time-field.tsx` para selectores nativos de fecha y hora. |
+| `expo-haptics` | **Conservado / Usado** | Utilizado en `utils/haptics.ts` para microinteracciones táctiles en selección de fechas y operaciones CRUD. |
+| `expo-splash-screen` | **Conservado / Usado** | Gestión de pantalla de carga inicial integrado en `app.json` con variantes clara y oscura. |
+| `expo-secure-store` | **Conservado / Usado** | Almacenamiento cifrado seguro del token JWT del usuario (`storage/secure-token-storage.ts`). |
+| `expo-notifications` | **Conservado / Usado** | Programación de recordatorios locales de eventos (`features/notifications/`). |
+| `expo-router` | **Requerido** | Enrutador declarativo basado en sistema de archivos principal de la aplicación. |
+| `expo-font` | **Requerido** | Dependencia requerida por Expo Router para la carga y resolución de fuentes. |
+| `expo-system-ui` | **Requerido** | Configuración del color de fondo raíz a nivel de sistema nativo. |
+| `expo-status-bar` | **Requerido** | Gestión de barra de estado según el tema activo. |
+| `react-native-screens` | **Requerido** | Primitivas nativas de pantalla requeridas por `expo-router` y React Navigation. |
+| `react-native-safe-area-context` | **Requerido** | Insets y áreas seguras requeridas por `Screen` y `expo-router`. |
+| `react-native-gesture-handler` | **Requerido** | Gestos táctiles nativos requeridos por los navegadores de pila de Expo Router. |
+| `react-native-reanimated` | **Requerido** | Dependencia del ecosistema Expo SDK 57 requerida por navegadores modales. |
+
+**Resultado del diagnóstico:** `npx expo-doctor` ejecutó 21 verificaciones con **21/21 verificaciones aprobadas (0 errores detectados)**.
+
+
