@@ -4,9 +4,11 @@ import { describe, it } from 'node:test';
 import {
   formatDateIso,
   formatDisplayDate,
+  formatDayGroupHeader,
   getCalendarGrid,
   getEventsForDate,
   getMonthDateRange,
+  groupEventsByDate,
   MONTH_NAMES,
 } from './calendar-utils.ts';
 import type { Event } from './event-types.ts';
@@ -102,4 +104,71 @@ describe('calendar-utils', () => {
     const empty = getEventsForDate(events, '2026-10-23');
     assert.equal(empty.length, 0);
   });
+
+  it('formatDayGroupHeader añade prefijo Hoy cuando coincide con todayIso', () => {
+    // 2026-10-30 es Viernes
+    const headerToday = formatDayGroupHeader('2026-10-30', '2026-10-30');
+    assert.ok(headerToday.startsWith('Hoy · Viernes, 30 de octubre'));
+
+    const headerOther = formatDayGroupHeader('2026-10-31', '2026-10-30');
+    assert.equal(headerOther, 'Sábado, 31 de octubre');
+  });
+
+  it('groupEventsByDate agrupa y ordena cronológicamente los días y horas', () => {
+    const events: Event[] = [
+      {
+        id: '1',
+        userId: 'u1',
+        title: 'Tarde día 2',
+        description: null,
+        date: '2026-10-31',
+        time: '18:00',
+        category: 'personal',
+        priority: 'baja',
+        createdAt: '2026-10-21T00:00:00Z',
+        updatedAt: '2026-10-21T00:00:00Z',
+      },
+      {
+        id: '2',
+        userId: 'u1',
+        title: 'Mañana día 1',
+        description: null,
+        date: '2026-10-30',
+        time: '09:00',
+        category: 'trabajo',
+        priority: 'alta',
+        createdAt: '2026-10-21T00:00:00Z',
+        updatedAt: '2026-10-21T00:00:00Z',
+      },
+      {
+        id: '3',
+        userId: 'u1',
+        title: 'Tarde día 1',
+        description: null,
+        date: '2026-10-30',
+        time: '14:00',
+        category: 'salud',
+        priority: 'media',
+        createdAt: '2026-10-21T00:00:00Z',
+        updatedAt: '2026-10-21T00:00:00Z',
+      },
+    ];
+
+    const groups = groupEventsByDate(events, '2026-10-30');
+    assert.equal(groups.length, 2);
+
+    // Primer día: 2026-10-30
+    assert.equal(groups[0].date, '2026-10-30');
+    assert.equal(groups[0].isToday, true);
+    assert.equal(groups[0].events.length, 2);
+    assert.equal(groups[0].events[0].id, '2'); // 09:00 antes de 14:00
+    assert.equal(groups[0].events[1].id, '3');
+
+    // Segundo día: 2026-10-31
+    assert.equal(groups[1].date, '2026-10-31');
+    assert.equal(groups[1].isToday, false);
+    assert.equal(groups[1].events.length, 1);
+    assert.equal(groups[1].events[0].id, '1');
+  });
 });
+

@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -9,18 +9,13 @@ import { ErrorState } from '@/components/error-state';
 import { EventCard } from '@/components/event-card';
 import { EventDetailModal } from '@/components/event-detail-modal';
 import { FadeInView } from '@/components/fade-in-view';
-import { IconButton } from '@/components/icon';
+import { Icon, IconButton } from '@/components/icon';
 import type { AppIconName } from '@/components/icon-model';
 import { LoadingState } from '@/components/loading-state';
 import { MonthCalendar } from '@/components/month-calendar';
 import { Screen } from '@/components/screen';
 import { SegmentedControl } from '@/components/segmented-control';
-import {
-  CATEGORY_FILTER_OPTIONS,
-  filterEventsByCategory,
-  getCategoryCounts,
-  type CategoryFilter,
-} from '@/components/segmented-control-model';
+import type { SegmentedOption } from '@/components/segmented-control-model';
 import { ThemedText } from '@/components/themed-text';
 import { useToast } from '@/components/toast';
 import { useAuth } from '@/features/auth/auth-context';
@@ -29,10 +24,12 @@ import {
   formatDisplayDate,
   getEventsForDate,
   getMonthDateRange,
+  groupEventsByDate,
+  MONTH_NAMES,
 } from '@/features/events/calendar-utils';
 import type { Event } from '@/features/events/event-types';
 import { deleteEvent, getEvents } from '@/features/events/events-api';
-import { Elevation, Typography } from '@/constants/theme';
+import { Elevation, Radius, Typography } from '@/constants/theme';
 import { useThemePreference } from '@/features/theme/theme-context';
 import { getPressOrigin } from '@/features/theme/theme-reveal';
 import { useTheme } from '@/hooks/use-theme';
@@ -41,14 +38,7 @@ import { getToken } from '@/storage/secure-token-storage';
 import { triggerLightHaptic, triggerSuccessHaptic } from '@/utils/haptics';
 import { useSizeClass } from '@/utils/window-size';
 
-const CATEGORY_ICONS: Partial<Record<CategoryFilter, AppIconName>> = {
-  todas: 'calendar',
-  trabajo: 'briefcase',
-  estudio: 'book',
-  personal: 'user',
-  salud: 'heart',
-  otro: 'tag',
-};
+export type AgendaViewMode = 'all' | 'day';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -71,7 +61,7 @@ export default function HomeScreen() {
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<string>(todayIso);
-  const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('todas');
+  const [viewMode, setViewMode] = useState<AgendaViewMode>('all');
 
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -149,28 +139,36 @@ export default function HomeScreen() {
     [events, selectedDate]
   );
 
-  const categoryCounts = useMemo(
-    () => getCategoryCounts(selectedDateEvents),
-    [selectedDateEvents]
+  const dayGroups = useMemo(
+    () => groupEventsByDate(events, todayIso),
+    [events, todayIso]
   );
 
-  const filterOptions = useMemo(
-    () =>
-      CATEGORY_FILTER_OPTIONS.map((opt) => ({
-        ...opt,
-        count: categoryCounts[opt.value],
-      })),
-    [categoryCounts]
+  const viewModeOptions = useMemo<SegmentedOption<AgendaViewMode>[]>(
+    () => [
+      {
+        value: 'all',
+        label: 'Todos los eventos',
+        count: events.length,
+      },
+      {
+        value: 'day',
+        label: 'Día seleccionado',
+        count: selectedDateEvents.length,
+      },
+    ],
+    [events.length, selectedDateEvents.length]
   );
 
-  const displayedEvents = useMemo(
-    () => filterEventsByCategory(selectedDateEvents, selectedCategory),
-    [selectedDateEvents, selectedCategory]
-  );
+  const viewModeIcons: Partial<Record<AgendaViewMode, AppIconName>> = {
+    all: 'calendar',
+    day: 'clock',
+  };
 
   function handleSelectDay(dateIso: string) {
     triggerLightHaptic();
     setSelectedDate(dateIso);
+    setViewMode('day');
     const parts = dateIso.split('-');
     const cellYear = parseInt(parts[0], 10);
     const cellMonth = parseInt(parts[1], 10) - 1;
@@ -182,6 +180,7 @@ export default function HomeScreen() {
   }
 
   function handleGoToToday() {
+    triggerLightHaptic();
     if (
       currentYear !== today.getFullYear() ||
       currentMonth !== today.getMonth()
@@ -191,6 +190,7 @@ export default function HomeScreen() {
       setCurrentMonth(today.getMonth());
     }
     setSelectedDate(todayIso);
+    setViewMode('day');
   }
 
   function handleEditEvent(event: Event) {
@@ -354,25 +354,27 @@ export default function HomeScreen() {
         </View>
 
         <View style={sizeConfig.isExpanded ? styles.rightColumn : styles.fullColumn}>
-          {/* Sección del día seleccionado */}
+          {/* Cabecera de la sección de agenda */}
           <View style={styles.sectionHeader}>
-            <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
-              Eventos para {formatDisplayDate(selectedDate)}
-            </ThemedText>
-            <ThemedText style={[styles.sectionCount, { color: theme.textSecondary }]}>
-              ({selectedDateEvents.length})
-            </ThemedText>
+            <View style={styles.sectionTitleRow}>
+              <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
+                {viewMode === 'all'
+                  ? `Agenda de ${MONTH_NAMES[currentMonth]}`
+                  : `Eventos para ${formatDisplayDate(selectedDate)}`}
+              </ThemedText>
+              <ThemedText style={[styles.sectionCount, { color: theme.textSecondary }]}>
+                ({viewMode === 'all' ? events.length : selectedDateEvents.length})
+              </ThemedText>
+            </View>
           </View>
 
-          {/* Selector de filtro por categoría estilo iOS Segmented Control */}
-          {selectedDateEvents.length > 0 && (
-            <SegmentedControl
-              options={filterOptions}
-              value={selectedCategory}
-              onChange={setSelectedCategory}
-              icons={CATEGORY_ICONS}
-            />
-          )}
+          {/* Selector de modo estilo iOS: Todos los eventos vs Día seleccionado */}
+          <SegmentedControl
+            options={viewModeOptions}
+            value={viewMode}
+            onChange={setViewMode}
+            icons={viewModeIcons}
+          />
 
           {/* Estados: Carga, Error, Vacío o Lista */}
           {loading ? (
@@ -386,34 +388,100 @@ export default function HomeScreen() {
                 setReloadToken((t) => t + 1);
               }}
             />
-          ) : selectedDateEvents.length === 0 ? (
+          ) : viewMode === 'day' ? (
+            selectedDateEvents.length === 0 ? (
+              <EmptyState
+                icon="calendar"
+                title="No hay eventos para este día"
+                message="No tienes actividades registradas para la fecha seleccionada."
+                actionLabel="Ver todos los eventos del mes"
+                onAction={() => setViewMode('all')}
+              />
+            ) : (
+              <View style={styles.eventsList}>
+                {selectedDateEvents.map((item, index) => (
+                  <FadeInView key={`${item.id}-${selectedDate}`} index={index}>
+                    <EventCard
+                      event={item}
+                      onPress={(ev) => {
+                        setDeleteError(null);
+                        setSelectedEvent(ev);
+                      }}
+                    />
+                  </FadeInView>
+                ))}
+              </View>
+            )
+          ) : events.length === 0 ? (
             <EmptyState
               icon="calendar"
-              title="No hay eventos para este día"
-              message="Aprovecha tu día libre o programa una nueva actividad."
+              title="Sin eventos en este mes"
+              message="Aprovecha tu mes libre o programa una nueva actividad en tu agenda."
               actionLabel="Programar un evento"
               onAction={() => router.push('/(app)/events/new' as any)}
             />
-          ) : displayedEvents.length === 0 ? (
-            <EmptyState
-              icon="filter"
-              title={`Sin eventos en «${selectedCategory}»`}
-              message="No tienes actividades registradas en esta categoría para el día seleccionado."
-              actionLabel="Ver todas las categorías"
-              onAction={() => setSelectedCategory('todas')}
-            />
           ) : (
-            <View style={styles.eventsList}>
-              {displayedEvents.map((item, index) => (
-                <FadeInView key={`${item.id}-${selectedDate}`} index={index}>
-                  <EventCard
-                    event={item}
-                    onPress={(ev) => {
-                      setDeleteError(null);
-                      setSelectedEvent(ev);
+            <View style={styles.dayGroupsContainer}>
+              {dayGroups.map((group) => (
+                <View key={group.date} style={styles.dayGroupBlock}>
+                  {/* Cabecera del día con acceso directo para ver solo ese día */}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Ver solo eventos de ${group.header}`}
+                    onPress={() => {
+                      triggerLightHaptic();
+                      setSelectedDate(group.date);
+                      setViewMode('day');
                     }}
-                  />
-                </FadeInView>
+                    style={[
+                      styles.dayGroupHeader,
+                      group.isToday && [
+                        styles.dayGroupHeaderToday,
+                        {
+                          backgroundColor: theme.isDark
+                            ? 'rgba(59, 130, 246, 0.15)'
+                            : 'rgba(26, 111, 208, 0.08)',
+                          borderColor: theme.primary,
+                        },
+                      ],
+                    ]}>
+                    <View style={styles.dayGroupHeaderLeft}>
+                      <Icon
+                        name={group.isToday ? 'calendar' : 'clock'}
+                        size={14}
+                        color={group.isToday ? theme.primary : theme.textSecondary}
+                      />
+                      <ThemedText
+                        type={group.isToday ? 'smallBold' : 'small'}
+                        style={{
+                          color: group.isToday ? theme.primary : theme.text,
+                          fontSize: 13,
+                        }}>
+                        {group.header}
+                      </ThemedText>
+                    </View>
+                    <ThemedText
+                      type="small"
+                      style={[styles.dayGroupCount, { color: theme.textSecondary }]}>
+                      {group.events.length} {group.events.length === 1 ? 'evento' : 'eventos'}
+                    </ThemedText>
+                  </Pressable>
+
+                  {/* Lista de eventos de este día */}
+                  <View style={styles.eventsList}>
+                    {group.events.map((item, index) => (
+                      <FadeInView key={`${item.id}-${group.date}`} index={index}>
+                        <EventCard
+                          event={item}
+                          onPress={(ev) => {
+                            setDeleteError(null);
+                            setSelectedEvent(ev);
+                          }}
+                        />
+                      </FadeInView>
+                    ))}
+                  </View>
+                </View>
               ))}
             </View>
           )}
@@ -477,7 +545,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 6,
-    marginVertical: 12,
+    marginVertical: 8,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
   },
   sectionTitle: {
     fontSize: Typography.body.fontSize,
@@ -486,6 +559,37 @@ const styles = StyleSheet.create({
   sectionCount: {
     fontSize: Typography.caption.fontSize,
     fontWeight: '500',
+  },
+  dayGroupsContainer: {
+    width: '100%',
+    gap: 16,
+    marginTop: 8,
+  },
+  dayGroupBlock: {
+    width: '100%',
+    gap: 6,
+  },
+  dayGroupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  dayGroupHeaderToday: {
+    borderWidth: 1,
+  },
+  dayGroupHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dayGroupCount: {
+    fontSize: Typography.caption.fontSize,
+    fontWeight: '600',
   },
   eventsList: {
     width: '100%',

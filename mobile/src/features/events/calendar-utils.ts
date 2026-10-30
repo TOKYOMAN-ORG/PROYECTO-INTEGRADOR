@@ -116,3 +116,50 @@ export function getEventsForDate(events: Event[], dateIso: string): Event[] {
     .filter((e) => e.date === dateIso)
     .sort((a, b) => a.time.localeCompare(b.time));
 }
+
+export interface DayGroup {
+  date: string;
+  header: string;
+  isToday: boolean;
+  events: Event[];
+}
+
+/**
+ * Formatea la cabecera de un grupo diario: Ej. "Hoy · Viernes, 30 de octubre" o "Sábado, 31 de octubre"
+ */
+export function formatDayGroupHeader(dateIso: string, todayIso: string): string {
+  const parts = dateIso.split('-');
+  if (parts.length !== 3) return dateIso;
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  const d = new Date(year, month, day);
+  const weekdayName = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][d.getDay()];
+  const formatted = `${weekdayName}, ${day} de ${MONTH_NAMES[month].toLowerCase()}`;
+  return dateIso === todayIso ? `Hoy · ${formatted}` : formatted;
+}
+
+/**
+ * Agrupa los eventos ordenados por fecha y hora cronológica para la vista de agenda.
+ */
+export function groupEventsByDate(events: Event[], todayIso: string): DayGroup[] {
+  const map = new Map<string, Event[]>();
+  for (const ev of events) {
+    const list = map.get(ev.date) ?? [];
+    list.push(ev);
+    map.set(ev.date, list);
+  }
+
+  const sortedDates = Array.from(map.keys()).sort();
+
+  return sortedDates.map((date) => {
+    const dayEvents = (map.get(date) ?? []).sort((a, b) => a.time.localeCompare(b.time));
+    return {
+      date,
+      header: formatDayGroupHeader(date, todayIso),
+      isToday: date === todayIso,
+      events: dayEvents,
+    };
+  });
+}
+
