@@ -3,7 +3,6 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -18,7 +17,7 @@ import {
   type ToastTone,
 } from '@/components/toast-model';
 
-import { Duration } from '@/constants/theme';
+import { Duration, Elevation } from '@/constants/theme';
 
 interface ShowToastOptions {
   tone?: ToastTone;
@@ -48,7 +47,7 @@ function ToastItem({
   toast: ToastMessage;
   onDismiss: () => void;
 }) {
-  const anim = useRef(new Animated.Value(0)).current;
+  const [anim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     Animated.timing(anim, {
@@ -141,10 +140,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 600,
     marginBottom: 8,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 6,
+    ...Elevation.md,
   },
 });

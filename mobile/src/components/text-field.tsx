@@ -4,8 +4,6 @@ import {
   StyleSheet,
   TextInput,
   View,
-  type NativeSyntheticEvent,
-  type TextInputFocusEventData,
   type TextInputProps,
 } from 'react-native';
 

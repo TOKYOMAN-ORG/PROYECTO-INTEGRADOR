@@ -30,7 +30,7 @@ describe('Verificación de Contraste WCAG AA en Temas de Color (SCRUM-92, SCRUM-
     const theme = Colors[scheme];
 
     describe(`Tema ${scheme}`, () => {
-      const textPairs: Array<[string, string, string]> = [
+      const textPairs: [string, string, string][] = [
         ['text sobre background', theme.text, theme.background],
         ['text sobre surface', theme.text, theme.surface],
         ['textSecondary sobre background', theme.textSecondary, theme.background],
@@ -64,7 +64,7 @@ describe('Verificación de Contraste WCAG AA en Temas de Color (SCRUM-92, SCRUM-
         });
       }
 
-      const componentPairs: Array<[string, string, string]> = [
+      const componentPairs: [string, string, string][] = [
         ['borderStrong sobre background', theme.borderStrong, theme.background],
         ['primary sobre background', theme.primary, theme.background],
         ['danger sobre background', theme.danger, theme.background],

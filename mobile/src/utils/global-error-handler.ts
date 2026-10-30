@@ -16,9 +16,9 @@ export function installGlobalErrorHandlers(): void {
   installed = true;
 
   try {
-    const ErrorUtilsModule =
-      (globalThis as any).ErrorUtils ??
-      (typeof require === 'function' ? (require('react-native') as any)?.ErrorUtils : undefined);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const rn = typeof require === 'function' ? (require('react-native') as any) : undefined;
+    const ErrorUtilsModule = (globalThis as any).ErrorUtils ?? rn?.ErrorUtils;
     if (ErrorUtilsModule && typeof ErrorUtilsModule.setGlobalHandler === 'function') {
       const defaultHandler =
         typeof ErrorUtilsModule.getGlobalHandler === 'function'

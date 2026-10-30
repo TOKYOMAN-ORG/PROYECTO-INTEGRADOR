@@ -23,6 +23,7 @@ import {
 } from '@/features/events/calendar-utils';
 import type { Event } from '@/features/events/event-types';
 import { deleteEvent, getEvents } from '@/features/events/events-api';
+import { Elevation, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, NetworkError } from '@/services/http-client';
 import { getToken } from '@/storage/secure-token-storage';
@@ -374,12 +375,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   appTitle: {
-    fontSize: 22,
+    fontSize: Typography.title.fontSize,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
   appSubtitle: {
-    fontSize: 13,
+    fontSize: Typography.label.fontSize,
     fontWeight: '500',
     marginTop: 2,
   },
@@ -394,11 +395,11 @@ const styles = StyleSheet.create({
     marginVertical: 12,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: Typography.body.fontSize,
     fontWeight: '700',
   },
   sectionCount: {
-    fontSize: 14,
+    fontSize: Typography.caption.fontSize,
     fontWeight: '500',
   },
   eventsList: {
@@ -411,11 +412,7 @@ const styles = StyleSheet.create({
     zIndex: 99,
   },
   fabButton: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 6,
+    ...Elevation.md,
   },
   twoColumnWrap: {
     flexDirection: 'row',

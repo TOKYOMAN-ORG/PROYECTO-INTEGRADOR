@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
 
 import { Colors } from '../constants/theme.ts';
-import { getButtonConfig, type ButtonVariant } from './button-model.ts';
+import { getButtonConfig } from './button-model.ts';
 
 describe('Button Model (SCRUM-95)', () => {
   const light = Colors.light;

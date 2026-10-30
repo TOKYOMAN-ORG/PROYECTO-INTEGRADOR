@@ -19,7 +19,7 @@ export interface OptionItemStyleConfig {
   minWidth: number;
 }
 
-export function resolveOptionItemStyle<T extends string | number>(params: {
+export function resolveOptionItemStyle(params: {
   isSelected: boolean;
   theme: ColorTheme;
   tone?: BadgeTone;

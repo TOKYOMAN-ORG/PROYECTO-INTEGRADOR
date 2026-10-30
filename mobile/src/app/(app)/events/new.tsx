@@ -28,6 +28,7 @@ import {
   describeCreateEventError,
   updateEvent,
 } from '@/features/events/events-api';
+import { Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getToken } from '@/storage/secure-token-storage';
 import { triggerSuccessHaptic } from '@/utils/haptics';
@@ -304,7 +305,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: Typography.subtitle.fontSize,
     fontWeight: '700',
   },
   headerSpacer: {

@@ -14,6 +14,7 @@ import {
   type RegisterValues,
   validateRegister,
 } from '@/features/auth/register-validation';
+import { Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 const EMPTY_VALUES: RegisterValues = { name: '', email: '', password: '', confirmPassword: '' };
@@ -203,12 +204,12 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   brandTitle: {
-    fontSize: 28,
+    fontSize: Typography.display.fontSize,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
   brandSubtitle: {
-    fontSize: 14,
+    fontSize: Typography.caption.fontSize,
     marginTop: 4,
     textAlign: 'center',
   },
@@ -216,7 +217,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   formTitle: {
-    fontSize: 20,
+    fontSize: Typography.title.fontSize,
     fontWeight: '700',
     marginBottom: 16,
   },

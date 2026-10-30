@@ -23,7 +23,7 @@ import {
   type ConfirmOptions,
 } from '@/components/confirm-dialog-model';
 import { ThemedText } from '@/components/themed-text';
-import { Radius } from '@/constants/theme';
+import { Elevation, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 interface ConfirmContextType {
@@ -148,11 +148,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
     borderWidth: 1,
     padding: 24,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    elevation: 8,
+    ...Elevation.lg,
     zIndex: 1,
   },
   title: {
