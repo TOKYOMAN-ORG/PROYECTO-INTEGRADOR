@@ -112,11 +112,13 @@ export function EventDetailModal({
 
             {/* Badges de Categoría y Prioridad */}
             <View style={styles.badgesRow}>
+              <Icon name="tag" size={16} color={theme.textSecondary} />
               <Badge
                 label={getCategoryLabel(event.category)}
                 tone={event.category}
                 size="md"
               />
+              <Icon name="flag" size={16} color={theme.textSecondary} />
               <Badge
                 label={getPriorityLabel(event.priority)}
                 tone={event.priority}

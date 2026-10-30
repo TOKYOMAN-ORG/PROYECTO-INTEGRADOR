@@ -7,6 +7,8 @@ import {
   type TextInputProps,
 } from 'react-native';
 
+import { Icon } from '@/components/icon';
+import type { AppIconName } from '@/components/icon-model';
 import { getTextFieldBorderConfig } from '@/components/text-field-model';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -20,6 +22,8 @@ export type TextFieldProps = TextInputProps & {
   helperText?: string;
   /** Indica si el campo es obligatorio, añadiendo un indicador visual y de accesibilidad. */
   required?: boolean;
+  /** Icono decorativo al inicio del campo. */
+  leftIcon?: AppIconName;
 };
 
 /** Input accesible con etiqueta, estado de foco guiado, mensaje de ayuda/error y multilínea. */
@@ -29,6 +33,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
     error,
     helperText,
     required = false,
+    leftIcon,
     secureTextEntry,
     multiline = false,
     numberOfLines,
@@ -83,6 +88,14 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
             alignItems: multiline ? 'flex-start' : 'center',
           },
         ]}>
+        {leftIcon && (
+          <Icon
+            name={leftIcon}
+            size={18}
+            color={focused ? theme.primary : theme.textSecondary}
+            style={styles.leftIcon}
+          />
+        )}
         <TextInput
           ref={ref}
           accessibilityLabel={`${label}${required ? ', campo obligatorio' : ''}`}
@@ -113,9 +126,11 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
             hitSlop={8}
             onPress={() => setRevealed((value) => !value)}
             style={styles.toggle}>
-            <ThemedText type="smallBold" themeColor="primary">
-              {revealed ? 'Ocultar' : 'Mostrar'}
-            </ThemedText>
+            <Icon
+              name={revealed ? 'eyeOff' : 'eye'}
+              size={20}
+              color={theme.textSecondary}
+            />
           </Pressable>
         )}
       </View>
@@ -147,6 +162,9 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
+  },
+  leftIcon: {
+    marginRight: Spacing.two,
   },
   toggle: {
     paddingLeft: Spacing.two,

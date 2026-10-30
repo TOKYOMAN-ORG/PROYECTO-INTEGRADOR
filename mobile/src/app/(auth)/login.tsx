@@ -117,6 +117,7 @@ export default function LoginScreen() {
         <TextField
           ref={emailRef}
           label="Correo electrónico"
+          leftIcon="mail"
           required
           value={values.email}
           onChangeText={update('email')}
@@ -133,6 +134,7 @@ export default function LoginScreen() {
         <TextField
           ref={passwordRef}
           label="Contraseña"
+          leftIcon="lock"
           required
           value={values.password}
           onChangeText={update('password')}

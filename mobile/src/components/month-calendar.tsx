@@ -94,7 +94,7 @@ export function MonthCalendar({
             />
           )}
           <IconButton
-            name="back"
+            name="chevronLeft"
             accessibilityLabel="Mes anterior"
             size={18}
             onPress={handlePrevMonth}

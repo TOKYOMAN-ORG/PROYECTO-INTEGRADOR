@@ -113,6 +113,7 @@ export default function RegisterScreen() {
         <TextField
           ref={nameRef}
           label="Nombre"
+          leftIcon="user"
           required
           value={values.name}
           onChangeText={update('name')}
@@ -126,6 +127,7 @@ export default function RegisterScreen() {
         <TextField
           ref={emailRef}
           label="Correo electrónico"
+          leftIcon="mail"
           required
           value={values.email}
           onChangeText={update('email')}
@@ -142,6 +144,7 @@ export default function RegisterScreen() {
         <TextField
           ref={passwordRef}
           label="Contraseña"
+          leftIcon="lock"
           required
           value={values.password}
           onChangeText={update('password')}
@@ -157,6 +160,7 @@ export default function RegisterScreen() {
         <TextField
           ref={confirmPasswordRef}
           label="Confirmar contraseña"
+          leftIcon="lock"
           required
           value={values.confirmPassword}
           onChangeText={update('confirmPassword')}

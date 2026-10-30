@@ -1,3 +1,10 @@
+/**
+ * Registro de iconos vectoriales de la app.
+ *
+ * Cada icono es una lista de trazos SVG (viewBox 24x24, estilo de línea redondeado, trazo 2) basados en
+ * el set de código abierto Lucide (licencia ISC, https://lucide.dev). Se dibujan con `react-native-svg`,
+ * así se ven idénticos en web, iOS y Android y no dependen de emojis ni de fuentes del sistema.
+ */
 export type AppIconName =
   | 'calendar'
   | 'clock'
@@ -14,139 +21,192 @@ export type AppIconName =
   | 'info'
   | 'user'
   | 'chevronRight'
+  | 'chevronLeft'
   | 'error'
   | 'refresh'
   | 'empty'
   | 'sun'
-  | 'moon';
+  | 'moon'
+  | 'mail'
+  | 'lock'
+  | 'tag'
+  | 'flag'
+  | 'bell'
+  | 'text'
+  | 'eye'
+  | 'eyeOff';
 
 export interface IconDefinition {
-  ios: string;
-  android: string;
-  webFallback: string;
+  /** Trazos SVG en un viewBox de 24x24. */
+  paths: string[];
   defaultLabel: string;
 }
 
 export const IconRegistry: Record<AppIconName, IconDefinition> = {
   calendar: {
-    ios: 'calendar',
-    android: 'calendar_today',
-    webFallback: '📅',
+    paths: [
+      'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
+      'M16 2v4',
+      'M8 2v4',
+      'M3 10h18',
+    ],
     defaultLabel: 'Calendario',
   },
   clock: {
-    ios: 'clock',
-    android: 'schedule',
-    webFallback: '⏰',
+    paths: ['M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0', 'M12 6v6l4 2'],
     defaultLabel: 'Hora',
   },
   close: {
-    ios: 'xmark',
-    android: 'close',
-    webFallback: '✕',
+    paths: ['M18 6 6 18', 'M6 6l12 12'],
     defaultLabel: 'Cerrar',
   },
   check: {
-    ios: 'checkmark',
-    android: 'check',
-    webFallback: '✓',
+    paths: ['M20 6 9 17l-5-5'],
     defaultLabel: 'Aceptar',
   },
   back: {
-    ios: 'chevron.left',
-    android: 'arrow_back',
-    webFallback: '←',
+    paths: ['M19 12H5', 'M12 19l-7-7 7-7'],
     defaultLabel: 'Regresar',
   },
   add: {
-    ios: 'plus',
-    android: 'add',
-    webFallback: '+',
+    paths: ['M5 12h14', 'M12 5v14'],
     defaultLabel: 'Agregar',
   },
   edit: {
-    ios: 'pencil',
-    android: 'edit',
-    webFallback: '✎',
+    paths: ['M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z', 'M15 5l4 4'],
     defaultLabel: 'Editar',
   },
   delete: {
-    ios: 'trash',
-    android: 'delete',
-    webFallback: '🗑',
+    paths: [
+      'M3 6h18',
+      'M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6',
+      'M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2',
+      'M10 11v6',
+      'M14 11v6',
+    ],
     defaultLabel: 'Eliminar',
   },
   logout: {
-    ios: 'rectangle.portrait.and.arrow.right',
-    android: 'logout',
-    webFallback: '⇥',
+    paths: ['M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4', 'M16 17l5-5-5-5', 'M21 12H9'],
     defaultLabel: 'Cerrar sesión',
   },
   filter: {
-    ios: 'line.3.horizontal.decrease.circle',
-    android: 'filter_list',
-    webFallback: '▼',
+    paths: ['M22 3H2l8 9.46V19l4 2v-8.54L22 3z'],
     defaultLabel: 'Filtrar',
   },
   download: {
-    ios: 'square.and.arrow.down',
-    android: 'download',
-    webFallback: '↓',
+    paths: ['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'M7 10l5 5 5-5', 'M12 15V3'],
     defaultLabel: 'Descargar',
   },
   warning: {
-    ios: 'exclamationmark.triangle',
-    android: 'warning',
-    webFallback: '⚠',
+    paths: [
+      'M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z',
+      'M12 9v4',
+      'M12 17h.01',
+    ],
     defaultLabel: 'Advertencia',
   },
   info: {
-    ios: 'info.circle',
-    android: 'info',
-    webFallback: 'ℹ',
+    paths: ['M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0', 'M12 16v-4', 'M12 8h.01'],
     defaultLabel: 'Información',
   },
   user: {
-    ios: 'person.crop.circle',
-    android: 'account_circle',
-    webFallback: '👤',
+    paths: [
+      'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0',
+      'M9 10a3 3 0 1 0 6 0a3 3 0 1 0-6 0',
+      'M7 20.66V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.66',
+    ],
     defaultLabel: 'Usuario',
   },
   chevronRight: {
-    ios: 'chevron.right',
-    android: 'chevron_right',
-    webFallback: '›',
+    paths: ['M9 18l6-6-6-6'],
     defaultLabel: 'Siguiente',
   },
+  chevronLeft: {
+    paths: ['M15 18l-6-6 6-6'],
+    defaultLabel: 'Anterior',
+  },
   error: {
-    ios: 'exclamationmark.circle',
-    android: 'error',
-    webFallback: '!',
+    paths: ['M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0', 'M12 8v4', 'M12 16h.01'],
     defaultLabel: 'Error',
   },
   refresh: {
-    ios: 'arrow.clockwise',
-    android: 'refresh',
-    webFallback: '↻',
+    paths: ['M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8', 'M21 3v5h-5'],
     defaultLabel: 'Reintentar',
   },
   empty: {
-    ios: 'tray',
-    android: 'inbox',
-    webFallback: '📭',
+    paths: [
+      'M22 12h-6l-2 3h-4l-2-3H2',
+      'M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z',
+    ],
     defaultLabel: 'Vacío',
   },
   sun: {
-    ios: 'sun.max',
-    android: 'light_mode',
-    webFallback: '☀️',
+    paths: [
+      'M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0',
+      'M12 2v2',
+      'M12 20v2',
+      'M4.93 4.93l1.41 1.41',
+      'M17.66 17.66l1.41 1.41',
+      'M2 12h2',
+      'M20 12h2',
+      'M6.34 17.66l-1.41 1.41',
+      'M19.07 4.93l-1.41 1.41',
+    ],
     defaultLabel: 'Tema claro',
   },
   moon: {
-    ios: 'moon',
-    android: 'dark_mode',
-    webFallback: '🌙',
+    paths: ['M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z'],
     defaultLabel: 'Tema oscuro',
+  },
+  mail: {
+    paths: [
+      'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
+      'M22 7l-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7',
+    ],
+    defaultLabel: 'Correo',
+  },
+  lock: {
+    paths: [
+      'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z',
+      'M7 11V7a5 5 0 0 1 10 0v4',
+    ],
+    defaultLabel: 'Contraseña',
+  },
+  tag: {
+    paths: [
+      'M12.59 2.59A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17a2 2 0 0 0 .59 1.42l8.7 8.7a2.43 2.43 0 0 0 3.42 0l6.58-6.58a2.43 2.43 0 0 0 0-3.42z',
+      'M7 7h.01',
+    ],
+    defaultLabel: 'Categoría',
+  },
+  flag: {
+    paths: ['M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z', 'M4 22v-7'],
+    defaultLabel: 'Prioridad',
+  },
+  bell: {
+    paths: ['M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9', 'M10.3 21a1.94 1.94 0 0 0 3.4 0'],
+    defaultLabel: 'Recordatorio',
+  },
+  text: {
+    paths: ['M17 6H3', 'M21 12H3', 'M15 18H3'],
+    defaultLabel: 'Descripción',
+  },
+  eye: {
+    paths: [
+      'M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z',
+      'M9 12a3 3 0 1 0 6 0a3 3 0 1 0-6 0',
+    ],
+    defaultLabel: 'Mostrar',
+  },
+  eyeOff: {
+    paths: [
+      'M9.88 9.88a3 3 0 1 0 4.24 4.24',
+      'M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68',
+      'M6.61 6.61A13.53 13.53 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61',
+      'M2 2l20 20',
+    ],
+    defaultLabel: 'Ocultar',
   },
 };
 

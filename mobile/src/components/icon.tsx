@@ -1,14 +1,12 @@
 import {
-  Platform,
   Pressable,
   StyleSheet,
-  Text,
   View,
   type PressableProps,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { SymbolView, type SFSymbol } from 'expo-symbols';
+import Svg, { Path } from 'react-native-svg';
 
 import {
   getIconDefinition,
@@ -38,27 +36,6 @@ export function Icon({
 
   const isDecorative = !accessibilityLabel;
 
-  // En iOS y Android nativo, SymbolView de expo-symbols renderiza SF Symbols o Material Symbols
-  if (Platform.OS === 'ios' || Platform.OS === 'android') {
-    return (
-      <View
-        accessible={!isDecorative}
-        accessibilityElementsHidden={isDecorative}
-        importantForAccessibility={isDecorative ? 'no' : 'yes'}
-        aria-hidden={isDecorative}
-        accessibilityRole={isDecorative ? undefined : 'image'}
-        accessibilityLabel={accessibilityLabel}>
-        <SymbolView
-          name={def.ios as SFSymbol}
-          size={size}
-          tintColor={resolvedColor}
-          style={style}
-        />
-      </View>
-    );
-  }
-
-  // Fallback para Web / entorno de prueba
   return (
     <View
       accessible={!isDecorative}
@@ -68,10 +45,18 @@ export function Icon({
       accessibilityRole={isDecorative ? undefined : 'image'}
       accessibilityLabel={accessibilityLabel}
       style={[styles.fallbackContainer, { width: size, height: size }, style]}>
-      <Text
-        style={{ fontSize: size * 0.85, color: resolvedColor, textAlign: 'center' }}>
-        {def.webFallback}
-      </Text>
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        {def.paths.map((d, index) => (
+          <Path
+            key={index}
+            d={d}
+            stroke={resolvedColor}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ))}
+      </Svg>
     </View>
   );
 }

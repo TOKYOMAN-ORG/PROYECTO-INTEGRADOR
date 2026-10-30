@@ -30,20 +30,26 @@ describe('Icon Registry (SCRUM-97)', () => {
     'moon',
   ];
 
-  for (const name of expectedIcons) {
-    test(`icono ${name} tiene definidos nombres para ios, android, webFallback y defaultLabel`, () => {
+  for (const name of Object.keys(IconRegistry) as AppIconName[]) {
+    test(`icono ${name} tiene trazos SVG y defaultLabel accesible`, () => {
       const def = getIconDefinition(name);
-      assert.ok(def.ios.length > 0, `${name} debe tener nombre iOS`);
-      assert.ok(def.android.length > 0, `${name} debe tener nombre Android`);
-      assert.ok(def.webFallback.length > 0, `${name} debe tener fallback Web`);
+      assert.ok(def.paths.length > 0, `${name} debe tener al menos un trazo`);
+      assert.ok(def.paths.every((d) => /^M/.test(d)), `${name}: cada trazo debe iniciar con M`);
       assert.ok(def.defaultLabel.length > 0, `${name} debe tener defaultLabel accesible`);
     });
   }
 
-  test('sustituye los emojis por identificadores semánticos limpios', () => {
-    assert.equal(IconRegistry.calendar.ios, 'calendar');
-    assert.equal(IconRegistry.clock.android, 'schedule');
-    assert.equal(IconRegistry.close.ios, 'xmark');
-    assert.equal(IconRegistry.delete.ios, 'trash');
+  test('los iconos esperados están todos registrados', () => {
+    for (const name of expectedIcons) {
+      assert.ok(name in IconRegistry, `${name} falta en el registro`);
+    }
+  });
+
+  test('ningún icono usa emojis ni caracteres no ASCII en sus trazos', () => {
+    for (const [name, def] of Object.entries(IconRegistry)) {
+      for (const d of def.paths) {
+        assert.ok(/^[\x20-\x7e]+$/.test(d), `${name} contiene caracteres no válidos en un trazo`);
+      }
+    }
   });
 });
