@@ -14,6 +14,8 @@ import {
   type ButtonSize,
   type ButtonVariant,
 } from '@/components/button-model';
+import { Icon } from '@/components/icon';
+import type { AppIconName } from '@/components/icon-model';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -23,7 +25,7 @@ export type ButtonProps = Omit<PressableProps, 'children' | 'style'> & {
   children?: ReactNode;
   variant?: ButtonVariant;
   size?: ButtonSize;
-  icon?: ReactNode;
+  icon?: ReactNode | AppIconName;
   iconPosition?: 'left' | 'right';
   loading?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -47,6 +49,15 @@ export function Button({
   const inactive = disabled || loading;
 
   const resolvedHitSlop = customHitSlop ?? config.hitSlop;
+  const iconSize = size === 'sm' ? 16 : 20;
+
+  const renderIcon = () => {
+    if (!icon) return null;
+    if (typeof icon === 'string') {
+      return <Icon name={icon as AppIconName} size={iconSize} color={config.textColor} />;
+    }
+    return icon;
+  };
 
   return (
     <Pressable
@@ -72,7 +83,7 @@ export function Button({
         <ActivityIndicator color={config.textColor} size={size === 'sm' ? 'small' : 'small'} />
       ) : (
         <View style={styles.contentRow}>
-          {icon && iconPosition === 'left' && <View style={styles.iconLeft}>{icon}</View>}
+          {icon && iconPosition === 'left' && <View style={styles.iconLeft}>{renderIcon()}</View>}
           {title ? (
             <ThemedText
               type={size === 'sm' ? 'smallBold' : 'default'}
@@ -82,7 +93,7 @@ export function Button({
           ) : (
             children
           )}
-          {icon && iconPosition === 'right' && <View style={styles.iconRight}>{icon}</View>}
+          {icon && iconPosition === 'right' && <View style={styles.iconRight}>{renderIcon()}</View>}
         </View>
       )}
     </Pressable>
