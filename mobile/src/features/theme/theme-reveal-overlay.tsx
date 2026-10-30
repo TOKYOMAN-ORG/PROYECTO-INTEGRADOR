@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Animated, Easing, StyleSheet } from 'react-native';
+import { Animated, Easing, Platform, StyleSheet, View } from 'react-native';
 
 import type { ResolvedScheme } from './theme-preference';
 
@@ -14,37 +14,73 @@ export interface RevealState {
 
 interface Props {
   reveal: RevealState;
-  /** El círculo ya cubre la pantalla: es el momento de aplicar el tema nuevo por debajo. */
+  /** Se invoca a mitad de la expansión para aplicar el nuevo tema debajo del círculo */
   onCovered: () => void;
+  /** Se invoca al terminar la animación para desmontar la capa */
   onDone: () => void;
 }
 
-/**
- * Respaldo para iOS/Android (y navegadores sin View Transitions): un círculo del color del tema destino
- * crece desde el botón hasta cubrir la pantalla; entonces se cambia el tema y el círculo se desvanece.
- */
+const KEYFRAMES_STYLE_ID = 'secureplan-theme-ripple-keyframes';
+
+function ensureWebKeyframes() {
+  if (typeof document === 'undefined') return;
+  if (document.getElementById(KEYFRAMES_STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = KEYFRAMES_STYLE_ID;
+  style.textContent = `
+    @keyframes themeRippleExpand {
+      0% {
+        clip-path: circle(0px at var(--ripple-x) var(--ripple-y));
+        opacity: 1;
+      }
+      75% {
+        clip-path: circle(var(--ripple-r) at var(--ripple-x) var(--ripple-y));
+        opacity: 1;
+      }
+      100% {
+        clip-path: circle(var(--ripple-r) at var(--ripple-x) var(--ripple-y));
+        opacity: 0;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 export function ThemeRevealOverlay({ reveal, onCovered, onDone }: Props) {
+  const isWeb = Platform.OS === 'web';
   const [scale] = useState(() => new Animated.Value(0.001));
   const [opacity] = useState(() => new Animated.Value(1));
 
   useEffect(() => {
+    if (isWeb) {
+      ensureWebKeyframes();
+      // En web con CSS clip-path: cambio de tema a los 190ms (círculo ya cubre el área principal)
+      const coverTimer = setTimeout(onCovered, 190);
+      const doneTimer = setTimeout(onDone, 380);
+
+      return () => {
+        clearTimeout(coverTimer);
+        clearTimeout(doneTimer);
+      };
+    }
+
+    // En nativo (iOS / Android) usando Animated
     const animation = Animated.sequence([
       Animated.timing(scale, {
         toValue: 1,
-        duration: 520,
-        easing: Easing.bezier(0.4, 0, 0.2, 1),
+        duration: 320,
+        easing: Easing.bezier(0.16, 1, 0.3, 1),
         useNativeDriver: true,
       }),
       Animated.timing(opacity, {
         toValue: 0,
-        duration: 240,
+        duration: 120,
         easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
     ]);
 
-    // El tema se aplica justo al terminar de crecer, mientras el círculo aún es opaco.
-    const coverTimer = setTimeout(onCovered, 530);
+    const coverTimer = setTimeout(onCovered, 240);
     animation.start(({ finished }) => {
       if (finished) onDone();
     });
@@ -55,6 +91,34 @@ export function ThemeRevealOverlay({ reveal, onCovered, onDone }: Props) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reveal.id]);
+
+  if (isWeb) {
+    const webStyle: Record<string, string | number> = {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      width: '100vw',
+      height: '100vh',
+      backgroundColor: reveal.backgroundColor,
+      zIndex: 999999,
+      pointerEvents: 'none',
+      '--ripple-x': `${reveal.x}px`,
+      '--ripple-y': `${reveal.y}px`,
+      '--ripple-r': `${reveal.radius}px`,
+      animation: 'themeRippleExpand 380ms cubic-bezier(0.16, 1, 0.3, 1) forwards',
+    };
+
+    return (
+      <View
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={webStyle as any}
+      />
+    );
+  }
 
   const diameter = reveal.radius * 2;
 
@@ -83,6 +147,6 @@ export function ThemeRevealOverlay({ reveal, onCovered, onDone }: Props) {
 const styles = StyleSheet.create({
   circle: {
     position: 'absolute',
-    zIndex: 9999,
+    zIndex: 999999,
   },
 });

@@ -23,7 +23,7 @@ import {
 } from './theme-preference';
 import { clampOrigin, computeRevealRadius, type RevealOrigin } from './theme-reveal';
 import { ThemeRevealOverlay, type RevealState } from './theme-reveal-overlay';
-import { prefersReducedMotionWeb, startCircularTransition } from './theme-view-transition';
+import { prefersReducedMotionWeb } from './theme-view-transition';
 
 interface ThemePreferenceValue {
   preference: ThemePreference;
@@ -64,7 +64,7 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
       const target = toggleScheme(scheme);
       const { width, height } = Dimensions.get('window');
       const start = clampOrigin(origin ?? { x: width - 40, y: 40 }, width, height);
-      const radius = computeRevealRadius(start, width, height);
+      const radius = Math.ceil(computeRevealRadius(start, width, height)) + 30;
 
       const startOverlay = () => {
         revealId.current += 1;
@@ -82,7 +82,6 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
           setPreference(target);
           return;
         }
-        if (startCircularTransition(start, radius, () => setPreference(target))) return;
         startOverlay();
         return;
       }
