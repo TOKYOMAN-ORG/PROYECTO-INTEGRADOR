@@ -6,44 +6,42 @@ import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { reportError } from '@/utils/report-error';
+import {
+  createInitialErrorBoundaryState,
+  getDerivedErrorState,
+  resetErrorState,
+  type ErrorBoundaryState,
+} from './error-boundary-model';
 
-interface ErrorBoundaryProps {
+export interface ErrorBoundaryProps {
   children: ReactNode;
   onReset?: () => void;
-}
-
-interface ErrorBoundaryState {
-  hasError: boolean;
 }
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false };
+    this.state = createInitialErrorBoundaryState();
   }
 
   static getDerivedStateFromError(): ErrorBoundaryState {
-    return { hasError: true };
+    return getDerivedErrorState();
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    if (typeof __DEV__ !== 'undefined' && __DEV__) {
-      console.error('ErrorBoundary captured error:', error?.message);
-    } else {
-      console.error('ErrorBoundary captured error');
-    }
+    reportError(error);
     void info;
   }
 
   handleReset = () => {
-    this.setState({ hasError: false });
-    this.props.onReset?.();
+    this.setState(resetErrorState(this.props.onReset));
   };
 
   render() {
     if (this.state.hasError) {
       return (
-        <ThemedView style={styles.flex}>
+        <ThemedView style={styles.flex} testID="recovery-screen">
           <SafeAreaView style={styles.center}>
             <ThemedText type="subtitle" style={styles.centerText}>
               Algo salió mal
@@ -51,7 +49,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             <ThemedText style={styles.centerText}>
               Ocurrió un error inesperado. Puedes volver a intentar.
             </ThemedText>
-            <Button title="Reintentar" onPress={this.handleReset} />
+            <Button title="Reintentar" onPress={this.handleReset} testID="retry-button" />
           </SafeAreaView>
         </ThemedView>
       );
