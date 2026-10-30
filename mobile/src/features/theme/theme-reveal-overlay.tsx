@@ -24,16 +24,19 @@ const KEYFRAMES_STYLE_ID = 'secureplan-theme-ripple-keyframes';
 
 function ensureWebKeyframes() {
   if (typeof document === 'undefined') return;
-  if (document.getElementById(KEYFRAMES_STYLE_ID)) return;
-  const style = document.createElement('style');
-  style.id = KEYFRAMES_STYLE_ID;
+  let style = document.getElementById(KEYFRAMES_STYLE_ID) as HTMLStyleElement | null;
+  if (!style) {
+    style = document.createElement('style');
+    style.id = KEYFRAMES_STYLE_ID;
+    document.head.appendChild(style);
+  }
   style.textContent = `
     @keyframes themeRippleExpand {
       0% {
         clip-path: circle(0px at var(--ripple-x) var(--ripple-y));
         opacity: 1;
       }
-      75% {
+      80% {
         clip-path: circle(var(--ripple-r) at var(--ripple-x) var(--ripple-y));
         opacity: 1;
       }
@@ -43,7 +46,6 @@ function ensureWebKeyframes() {
       }
     }
   `;
-  document.head.appendChild(style);
 }
 
 export function ThemeRevealOverlay({ reveal, onCovered, onDone }: Props) {
@@ -54,9 +56,9 @@ export function ThemeRevealOverlay({ reveal, onCovered, onDone }: Props) {
   useEffect(() => {
     if (isWeb) {
       ensureWebKeyframes();
-      // En web con CSS clip-path: cambio de tema a los 190ms (círculo ya cubre el área principal)
-      const coverTimer = setTimeout(onCovered, 190);
-      const doneTimer = setTimeout(onDone, 380);
+      // En web con CSS clip-path: cambio de tema a los 420ms (el círculo ya cubre >85% de la pantalla)
+      const coverTimer = setTimeout(onCovered, 420);
+      const doneTimer = setTimeout(onDone, 700);
 
       return () => {
         clearTimeout(coverTimer);
@@ -68,19 +70,19 @@ export function ThemeRevealOverlay({ reveal, onCovered, onDone }: Props) {
     const animation = Animated.sequence([
       Animated.timing(scale, {
         toValue: 1,
-        duration: 320,
-        easing: Easing.bezier(0.16, 1, 0.3, 1),
+        duration: 560,
+        easing: Easing.bezier(0.25, 1, 0.5, 1),
         useNativeDriver: true,
       }),
       Animated.timing(opacity, {
         toValue: 0,
-        duration: 120,
+        duration: 180,
         easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
     ]);
 
-    const coverTimer = setTimeout(onCovered, 240);
+    const coverTimer = setTimeout(onCovered, 420);
     animation.start(({ finished }) => {
       if (finished) onDone();
     });
@@ -107,7 +109,7 @@ export function ThemeRevealOverlay({ reveal, onCovered, onDone }: Props) {
       '--ripple-x': `${reveal.x}px`,
       '--ripple-y': `${reveal.y}px`,
       '--ripple-r': `${reveal.radius}px`,
-      animation: 'themeRippleExpand 380ms cubic-bezier(0.16, 1, 0.3, 1) forwards',
+      animation: 'themeRippleExpand 700ms cubic-bezier(0.25, 1, 0.5, 1) forwards',
     };
 
     return (
