@@ -8,6 +8,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Badge } from '@/components/badge';
 import { Banner } from '@/components/banner';
@@ -22,6 +23,7 @@ import { Elevation, Radius } from '@/constants/theme';
 import { formatDisplayDate } from '@/features/events/calendar-utils';
 import type { Event } from '@/features/events/event-types';
 import { useTheme } from '@/hooks/use-theme';
+import { useSizeClass } from '@/utils/window-size';
 
 export interface EventDetailModalProps {
   event: Event | null;
@@ -45,6 +47,8 @@ export function EventDetailModal({
   testID,
 }: EventDetailModalProps) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const { isExpanded } = useSizeClass();
 
   if (!event) return null;
 
@@ -53,12 +57,18 @@ export function EventDetailModal({
       testID={testID}
       visible={visible}
       transparent={true}
-      animationType="fade"
+      animationType="slide"
       onRequestClose={() => !deleting && onClose()}
       accessibilityViewIsModal={true}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.backdrop}>
+        style={[
+          styles.backdrop,
+          {
+            justifyContent: isExpanded ? 'center' : 'flex-end',
+            padding: isExpanded ? 20 : 0,
+          },
+        ]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Cerrar modal de detalle"
@@ -72,8 +82,30 @@ export function EventDetailModal({
             {
               backgroundColor: theme.surface,
               borderColor: theme.border,
+              borderTopLeftRadius: 28,
+              borderTopRightRadius: 28,
+              borderBottomLeftRadius: isExpanded ? Radius.xl : 0,
+              borderBottomRightRadius: isExpanded ? Radius.xl : 0,
+              paddingBottom: isExpanded ? 24 : Math.max(insets.bottom + 12, 28),
+              maxWidth: isExpanded ? 500 : '100%',
             },
           ]}>
+          {/* Barra de agarre / grabber handle estilo iOS Sheet */}
+          {!isExpanded && (
+            <View style={styles.handleContainer}>
+              <View
+                style={[
+                  styles.handleBar,
+                  {
+                    backgroundColor: theme.isDark
+                      ? 'rgba(255, 255, 255, 0.28)'
+                      : 'rgba(0, 0, 0, 0.18)',
+                  },
+                ]}
+              />
+            </View>
+          )}
+
           {/* Cabecera del modal */}
           <View style={styles.modalHeader}>
             <ThemedText style={[styles.title, { color: theme.text }]}>
@@ -188,9 +220,7 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
   backdropDismiss: {
     position: 'absolute',
@@ -199,13 +229,23 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
+  handleContainer: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: 10,
+    marginTop: -8,
+  },
+  handleBar: {
+    width: 36,
+    height: 5,
+    borderRadius: 3,
+  },
   modalCard: {
     width: '100%',
-    maxWidth: 480,
-    maxHeight: '85%',
-    borderRadius: Radius.xl,
+    maxHeight: '88%',
     borderWidth: 1,
-    padding: 24,
+    paddingHorizontal: 22,
+    paddingTop: 18,
     ...Elevation.lg,
     zIndex: 1,
   },

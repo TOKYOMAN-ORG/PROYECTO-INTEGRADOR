@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -10,9 +10,17 @@ import { EventCard } from '@/components/event-card';
 import { EventDetailModal } from '@/components/event-detail-modal';
 import { FadeInView } from '@/components/fade-in-view';
 import { IconButton } from '@/components/icon';
+import type { AppIconName } from '@/components/icon-model';
 import { LoadingState } from '@/components/loading-state';
 import { MonthCalendar } from '@/components/month-calendar';
 import { Screen } from '@/components/screen';
+import { SegmentedControl } from '@/components/segmented-control';
+import {
+  CATEGORY_FILTER_OPTIONS,
+  filterEventsByCategory,
+  getCategoryCounts,
+  type CategoryFilter,
+} from '@/components/segmented-control-model';
 import { ThemedText } from '@/components/themed-text';
 import { useToast } from '@/components/toast';
 import { useAuth } from '@/features/auth/auth-context';
@@ -32,6 +40,15 @@ import { ApiError, NetworkError } from '@/services/http-client';
 import { getToken } from '@/storage/secure-token-storage';
 import { triggerLightHaptic, triggerSuccessHaptic } from '@/utils/haptics';
 import { useSizeClass } from '@/utils/window-size';
+
+const CATEGORY_ICONS: Partial<Record<CategoryFilter, AppIconName>> = {
+  todas: 'calendar',
+  trabajo: 'briefcase',
+  estudio: 'book',
+  personal: 'user',
+  salud: 'heart',
+  otro: 'tag',
+};
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -54,6 +71,7 @@ export default function HomeScreen() {
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<string>(todayIso);
+  const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('todas');
 
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -129,6 +147,25 @@ export default function HomeScreen() {
   const selectedDateEvents = useMemo(
     () => getEventsForDate(events, selectedDate),
     [events, selectedDate]
+  );
+
+  const categoryCounts = useMemo(
+    () => getCategoryCounts(selectedDateEvents),
+    [selectedDateEvents]
+  );
+
+  const filterOptions = useMemo(
+    () =>
+      CATEGORY_FILTER_OPTIONS.map((opt) => ({
+        ...opt,
+        count: categoryCounts[opt.value],
+      })),
+    [categoryCounts]
+  );
+
+  const displayedEvents = useMemo(
+    () => filterEventsByCategory(selectedDateEvents, selectedCategory),
+    [selectedDateEvents, selectedCategory]
   );
 
   function handleSelectDay(dateIso: string) {
@@ -245,7 +282,18 @@ export default function HomeScreen() {
     <Screen
       scrollable={true}
       header={
-        <View style={styles.appHeader}>
+        <View
+          style={[
+            styles.appHeader,
+            {
+              backgroundColor: theme.isDark
+                ? 'rgba(15, 23, 42, 0.85)'
+                : 'rgba(255, 255, 255, 0.88)',
+              borderBottomColor: theme.isDark
+                ? 'rgba(255, 255, 255, 0.08)'
+                : 'rgba(0, 0, 0, 0.06)',
+            },
+          ]}>
           <View style={styles.headerInfo}>
             <ThemedText style={[styles.appTitle, { color: theme.text }]}>
               SecurePlan
@@ -316,6 +364,16 @@ export default function HomeScreen() {
             </ThemedText>
           </View>
 
+          {/* Selector de filtro por categoría estilo iOS Segmented Control */}
+          {selectedDateEvents.length > 0 && (
+            <SegmentedControl
+              options={filterOptions}
+              value={selectedCategory}
+              onChange={setSelectedCategory}
+              icons={CATEGORY_ICONS}
+            />
+          )}
+
           {/* Estados: Carga, Error, Vacío o Lista */}
           {loading ? (
             <LoadingState message="Cargando tu agenda..." />
@@ -336,9 +394,17 @@ export default function HomeScreen() {
               actionLabel="Programar un evento"
               onAction={() => router.push('/(app)/events/new' as any)}
             />
+          ) : displayedEvents.length === 0 ? (
+            <EmptyState
+              icon="filter"
+              title={`Sin eventos en «${selectedCategory}»`}
+              message="No tienes actividades registradas en esta categoría para el día seleccionado."
+              actionLabel="Ver todas las categorías"
+              onAction={() => setSelectedCategory('todas')}
+            />
           ) : (
             <View style={styles.eventsList}>
-              {selectedDateEvents.map((item, index) => (
+              {displayedEvents.map((item, index) => (
                 <FadeInView key={`${item.id}-${selectedDate}`} index={index}>
                   <EventCard
                     event={item}
@@ -379,8 +445,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+      } as any,
+      default: {},
+    }),
   },
   headerInfo: {
     flex: 1,
