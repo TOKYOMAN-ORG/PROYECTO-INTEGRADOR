@@ -10,6 +10,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/features/auth/auth-context';
+import { ConfirmProvider } from '@/components/confirm-dialog';
+import { ToastProvider } from '@/components/toast';
 import { installGlobalErrorHandlers } from '@/utils/global-error-handler';
 
 installGlobalErrorHandlers();
@@ -18,7 +20,11 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <RootNavigator />
+        <ToastProvider>
+          <ConfirmProvider>
+            <RootNavigator />
+          </ConfirmProvider>
+        </ToastProvider>
       </AuthProvider>
     </ErrorBoundary>
   );
