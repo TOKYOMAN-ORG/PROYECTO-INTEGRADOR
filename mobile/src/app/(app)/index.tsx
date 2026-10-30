@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/empty-state';
 import { ErrorState } from '@/components/error-state';
 import { EventCard } from '@/components/event-card';
 import { EventDetailModal } from '@/components/event-detail-modal';
+import { FadeInView } from '@/components/fade-in-view';
 import { IconButton } from '@/components/icon';
 import { LoadingState } from '@/components/loading-state';
 import { MonthCalendar } from '@/components/month-calendar';
@@ -25,6 +26,7 @@ import type { Event } from '@/features/events/event-types';
 import { deleteEvent, getEvents } from '@/features/events/events-api';
 import { Elevation, Typography } from '@/constants/theme';
 import { useThemePreference } from '@/features/theme/theme-context';
+import { getPressOrigin } from '@/features/theme/theme-reveal';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, NetworkError } from '@/services/http-client';
 import { getToken } from '@/storage/secure-token-storage';
@@ -258,7 +260,7 @@ export default function HomeScreen() {
               name={theme.isDark ? 'sun' : 'moon'}
               accessibilityLabel={theme.isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
               size={20}
-              onPress={toggleTheme}
+              onPress={(event) => toggleTheme(getPressOrigin(event))}
             />
             <IconButton
               name="logout"
@@ -336,15 +338,16 @@ export default function HomeScreen() {
             />
           ) : (
             <View style={styles.eventsList}>
-              {selectedDateEvents.map((item) => (
-                <EventCard
-                  key={item.id}
-                  event={item}
-                  onPress={(ev) => {
-                    setDeleteError(null);
-                    setSelectedEvent(ev);
-                  }}
-                />
+              {selectedDateEvents.map((item, index) => (
+                <FadeInView key={`${item.id}-${selectedDate}`} index={index}>
+                  <EventCard
+                    event={item}
+                    onPress={(ev) => {
+                      setDeleteError(null);
+                      setSelectedEvent(ev);
+                    }}
+                  />
+                </FadeInView>
               ))}
             </View>
           )}

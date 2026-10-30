@@ -59,6 +59,7 @@ export function Card({
               backgroundColor: config.backgroundColor,
               borderColor: config.borderColor,
               borderWidth: config.borderWidth,
+              transform: [{ scale: pressed ? 0.985 : 1 }],
               ...config.shadow,
             },
             style,

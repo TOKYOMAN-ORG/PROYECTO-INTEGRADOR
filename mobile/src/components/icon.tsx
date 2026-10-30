@@ -110,6 +110,7 @@ export function IconButton({
           borderColor,
           borderWidth,
           opacity: disabled ? 0.4 : pressed ? 0.7 : 1,
+          transform: [{ scale: disabled ? 1 : pressed ? 0.9 : 1 }],
         },
         style,
       ]}

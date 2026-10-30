@@ -4,10 +4,13 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
+import { AccessibilityInfo, Dimensions, Platform, StyleSheet, View } from 'react-native';
 
+import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 import {
@@ -18,12 +21,16 @@ import {
   type ResolvedScheme,
   type ThemePreference,
 } from './theme-preference';
+import { clampOrigin, computeRevealRadius, type RevealOrigin } from './theme-reveal';
+import { ThemeRevealOverlay, type RevealState } from './theme-reveal-overlay';
+import { prefersReducedMotionWeb, startCircularTransition } from './theme-view-transition';
 
 interface ThemePreferenceValue {
   preference: ThemePreference;
   scheme: ResolvedScheme;
   setPreference: (preference: ThemePreference) => void;
-  toggle: () => void;
+  /** Alterna claro/oscuro; con `origin` la animación crece desde ese punto de la pantalla. */
+  toggle: (origin?: RevealOrigin) => void;
 }
 
 const ThemePreferenceContext = createContext<ThemePreferenceValue | null>(null);
@@ -43,23 +50,74 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const scheme = resolveScheme(preference, systemScheme);
+  const [reveal, setReveal] = useState<RevealState | null>(null);
+  const revealId = useRef(0);
 
   const setPreference = useCallback((next: ThemePreference) => {
     setPreferenceState(next);
     void saveThemePreference(next);
   }, []);
 
-  const toggle = useCallback(() => {
-    setPreference(toggleScheme(scheme));
-  }, [scheme, setPreference]);
+  const toggle = useCallback(
+    (origin?: RevealOrigin) => {
+      if (reveal) return; // Evita apilar animaciones si se pulsa varias veces.
+      const target = toggleScheme(scheme);
+      const { width, height } = Dimensions.get('window');
+      const start = clampOrigin(origin ?? { x: width - 40, y: 40 }, width, height);
+      const radius = computeRevealRadius(start, width, height);
+
+      const startOverlay = () => {
+        revealId.current += 1;
+        setReveal({
+          ...start,
+          radius,
+          target,
+          backgroundColor: Colors[target].background,
+          id: revealId.current,
+        });
+      };
+
+      if (Platform.OS === 'web') {
+        if (prefersReducedMotionWeb()) {
+          setPreference(target);
+          return;
+        }
+        if (startCircularTransition(start, radius, () => setPreference(target))) return;
+        startOverlay();
+        return;
+      }
+
+      AccessibilityInfo.isReduceMotionEnabled()
+        .then((reduced) => (reduced ? setPreference(target) : startOverlay()))
+        .catch(startOverlay);
+    },
+    [reveal, scheme, setPreference],
+  );
 
   const value = useMemo(
     () => ({ preference, scheme, setPreference, toggle }),
     [preference, scheme, setPreference, toggle],
   );
 
-  return <ThemePreferenceContext.Provider value={value}>{children}</ThemePreferenceContext.Provider>;
+  return (
+    <ThemePreferenceContext.Provider value={value}>
+      <View style={styles.root}>
+        {children}
+        {reveal && (
+          <ThemeRevealOverlay
+            reveal={reveal}
+            onCovered={() => setPreference(reveal.target)}
+            onDone={() => setReveal(null)}
+          />
+        )}
+      </View>
+    </ThemePreferenceContext.Provider>
+  );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+});
 
 /** Devuelve `null` fuera del proveedor para que `useTheme` pueda caer al tema del sistema. */
 export function useThemePreferenceOptional(): ThemePreferenceValue | null {

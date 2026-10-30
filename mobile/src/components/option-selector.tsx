@@ -81,7 +81,7 @@ export function OptionSelector<T extends string | number>({
               accessibilityHint={option.hint}
               disabled={disabled}
               onPress={() => !disabled && onChange(option.value)}
-              style={[
+              style={({ pressed }) => [
                 styles.optionItem,
                 {
                   backgroundColor: config.backgroundColor,
@@ -90,6 +90,7 @@ export function OptionSelector<T extends string | number>({
                   borderRadius: config.borderRadius,
                   minHeight: config.minHeight,
                   minWidth: config.minWidth,
+                  transform: [{ scale: pressed && !disabled ? 0.94 : 1 }],
                 },
               ]}>
               {config.indicatorColor && (

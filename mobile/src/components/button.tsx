@@ -75,6 +75,7 @@ export function Button({
           paddingHorizontal: config.paddingHorizontal,
           borderRadius: config.borderRadius,
           opacity: inactive ? 0.55 : pressed ? 0.85 : 1,
+          transform: [{ scale: pressed && !inactive ? 0.96 : 1 }],
         },
         style,
       ]}

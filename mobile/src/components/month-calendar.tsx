@@ -153,7 +153,10 @@ export function MonthCalendar({
               accessibilityState={{ selected: isSelected }}
               accessibilityLabel={accessibilityLabel}
               onPress={() => onSelectDate(cell.dateString)}
-              style={styles.dayCellContainer}>
+              style={({ pressed }) => [
+                styles.dayCellContainer,
+                { transform: [{ scale: pressed ? 0.92 : 1 }] },
+              ]}>
               <View
                 style={[
                   styles.dayCell,
