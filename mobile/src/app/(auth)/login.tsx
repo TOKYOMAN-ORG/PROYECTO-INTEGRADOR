@@ -193,17 +193,20 @@ const styles = StyleSheet.create({
   },
   formCard: {
     width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
+    gap: 16,
   },
   formTitle: {
     fontSize: Typography.title.fontSize,
     fontWeight: '700',
-    marginBottom: 16,
+    marginBottom: 4,
   },
   bannerWrapper: {
-    marginBottom: 16,
+    width: '100%',
   },
   actions: {
     gap: 12,
-    marginTop: 20,
+    marginTop: 8,
   },
 });

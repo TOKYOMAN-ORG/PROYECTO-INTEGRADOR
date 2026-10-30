@@ -136,7 +136,6 @@ export function OptionSelector<T extends string | number>({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    marginBottom: 16,
   },
   labelRow: {
     flexDirection: 'row',

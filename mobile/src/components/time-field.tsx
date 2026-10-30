@@ -106,9 +106,7 @@ export function TimeField({
         style={[
           styles.fieldBox,
           {
-            backgroundColor: disabled
-              ? theme.backgroundElement
-              : theme.surface,
+            backgroundColor: theme.backgroundElement,
             borderColor,
           },
         ]}>
@@ -125,6 +123,26 @@ export function TimeField({
           ]}>
           {value || placeholder}
         </ThemedText>
+
+        {Platform.OS === 'web' && !disabled && (
+          <input
+            type="time"
+            value={value}
+            aria-label={accessibilityLabel}
+            onChange={(e) => onChange(e.target.value)}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              opacity: 0,
+              width: '100%',
+              height: '100%',
+              cursor: 'pointer',
+            }}
+          />
+        )}
       </Pressable>
 
       {/* Selector nativo (Android / iOS) */}
@@ -158,7 +176,6 @@ export function TimeField({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    marginBottom: 16,
   },
   labelRow: {
     flexDirection: 'row',

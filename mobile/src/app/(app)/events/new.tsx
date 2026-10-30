@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { Platform, StyleSheet, type TextInput, View } from 'react-native';
 
 import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
@@ -174,7 +174,18 @@ export default function NewEventScreen() {
     <Screen
       scrollable={true}
       header={
-        <View style={styles.header}>
+        <View
+          style={[
+            styles.header,
+            {
+              backgroundColor: theme.isDark
+                ? 'rgba(15, 23, 42, 0.85)'
+                : 'rgba(255, 255, 255, 0.88)',
+              borderBottomColor: theme.isDark
+                ? 'rgba(255, 255, 255, 0.08)'
+                : 'rgba(0, 0, 0, 0.06)',
+            },
+          ]}>
           <IconButton
             name="back"
             accessibilityLabel="Regresar a la agenda"
@@ -188,18 +199,19 @@ export default function NewEventScreen() {
         </View>
       }
       contentContainerStyle={styles.contentContainer}>
-      {/* Banner general de error si falla la validación del servidor */}
-      {generalError && (
-        <View style={styles.bannerWrapper}>
-          <Banner
-            tone="error"
-            title="No se pudo guardar el evento"
-            message={generalError}
-            actionLabel={isNotFound ? 'Volver a la agenda' : undefined}
-            onAction={isNotFound ? () => router.replace('/(app)/' as any) : undefined}
-          />
-        </View>
-      )}
+      <View style={styles.formCard}>
+        {/* Banner general de error si falla la validación del servidor */}
+        {generalError && (
+          <View style={styles.bannerWrapper}>
+            <Banner
+              tone="error"
+              title="No se pudo guardar el evento"
+              message={generalError}
+              actionLabel={isNotFound ? 'Volver a la agenda' : undefined}
+              onAction={isNotFound ? () => router.replace('/(app)/' as any) : undefined}
+            />
+          </View>
+        )}
 
       {/* Título con contador 0/100 y foco guiado */}
       <TextField
@@ -272,22 +284,23 @@ export default function NewEventScreen() {
         error={errors.priority}
       />
 
-      {/* Botones de acción */}
-      <View style={styles.buttonActions}>
-        <Button
-          title={isEditing ? 'Guardar cambios' : 'Crear evento'}
-          variant="primary"
-          size="md"
-          loading={submitting}
-          onPress={handleSubmit}
-        />
-        <Button
-          title="Cancelar"
-          variant="ghost"
-          size="md"
-          disabled={submitting}
-          onPress={() => router.back()}
-        />
+        {/* Botones de acción */}
+        <View style={styles.buttonActions}>
+          <Button
+            title={isEditing ? 'Guardar cambios' : 'Crear evento'}
+            variant="primary"
+            size="md"
+            loading={submitting}
+            onPress={handleSubmit}
+          />
+          <Button
+            title="Cancelar"
+            variant="ghost"
+            size="md"
+            disabled={submitting}
+            onPress={() => router.back()}
+          />
+        </View>
       </View>
     </Screen>
   );
@@ -295,14 +308,28 @@ export default function NewEventScreen() {
 
 const styles = StyleSheet.create({
   contentContainer: {
-    paddingVertical: 16,
+    paddingBottom: 24,
+  },
+  formCard: {
+    width: '100%',
+    maxWidth: 580,
+    alignSelf: 'center',
+    gap: 16,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+      } as any,
+      default: {},
+    }),
   },
   headerTitle: {
     fontSize: Typography.subtitle.fontSize,
@@ -312,7 +339,7 @@ const styles = StyleSheet.create({
     width: 44, // Equilibra el espacio del IconButton
   },
   bannerWrapper: {
-    marginBottom: 16,
+    width: '100%',
   },
   row: {
     flexDirection: 'row',
@@ -320,7 +347,7 @@ const styles = StyleSheet.create({
   },
   column: {
     flexDirection: 'column',
-    gap: 0,
+    gap: 12,
   },
   halfCol: {
     flex: 1,
@@ -329,8 +356,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   buttonActions: {
-    gap: 12,
-    marginTop: 20,
-    marginBottom: 32,
+    gap: 10,
+    marginTop: 8,
   },
 });

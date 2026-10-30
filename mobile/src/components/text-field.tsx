@@ -1,5 +1,6 @@
 import { forwardRef, useState } from 'react';
 import {
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -111,7 +112,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
             styles.input,
             {
               color: theme.text,
-              minHeight,
+              minHeight: multiline ? minHeight - 16 : undefined,
               paddingTop: multiline ? Spacing.two : undefined,
               paddingBottom: multiline ? Spacing.two : undefined,
             },
@@ -150,6 +151,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
 const styles = StyleSheet.create({
   container: {
     gap: Spacing.one,
+    width: '100%',
   },
   labelRow: {
     flexDirection: 'row',
@@ -162,6 +164,14 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
+    paddingVertical: Platform.OS === 'web' ? 10 : 8,
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+        boxShadow: 'none',
+      } as any,
+      default: {},
+    }),
   },
   leftIcon: {
     marginRight: Spacing.two,
@@ -172,3 +182,4 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
 });
+
