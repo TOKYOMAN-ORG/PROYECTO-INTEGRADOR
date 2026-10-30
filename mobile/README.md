@@ -59,3 +59,7 @@ try {
 ```
 
 Alcance actual: el cliente aún no adjunta el JWT; los interceptores de autenticación llegan en el Sprint 2.
+
+## Sistema de Diseño y UI/UX
+
+La arquitectura visual, principios de accesibilidad (WCAG AA), tokens semánticos y la matriz de componentes reutilizables están especificados en la [Guía de Diseño UI/UX](../docs/diseno-ui.md).
