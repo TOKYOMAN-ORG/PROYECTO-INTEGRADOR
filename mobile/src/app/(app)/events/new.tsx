@@ -1,30 +1,25 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-  useColorScheme,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useRef, useState } from 'react';
+import { StyleSheet, type TextInput, View } from 'react-native';
 
+import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
+import { DateField } from '@/components/date-field';
+import { IconButton } from '@/components/icon';
+import { type OptionItem, OptionSelector } from '@/components/option-selector';
+import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { TimeField } from '@/components/time-field';
+import { useToast } from '@/components/toast';
+import { formatDateIso } from '@/features/events/calendar-utils';
 import {
-  validateCreateEvent,
   type CreateEventField,
   type CreateEventFormErrors,
   type CreateEventValues,
+  validateCreateEvent,
 } from '@/features/events/create-event-validation';
 import {
-  EVENT_CATEGORIES,
-  EVENT_PRIORITIES,
   type EventCategory,
   type EventPriority,
 } from '@/features/events/event-types';
@@ -33,10 +28,31 @@ import {
   describeCreateEventError,
   updateEvent,
 } from '@/features/events/events-api';
+import { useTheme } from '@/hooks/use-theme';
 import { getToken } from '@/storage/secure-token-storage';
+
+const CATEGORY_OPTIONS: OptionItem<EventCategory>[] = [
+  { value: 'trabajo', label: 'Trabajo', tone: 'trabajo' },
+  { value: 'estudio', label: 'Estudio', tone: 'estudio' },
+  { value: 'personal', label: 'Personal', tone: 'personal' },
+  { value: 'salud', label: 'Salud', tone: 'salud' },
+  { value: 'otro', label: 'Otro', tone: 'otro' },
+];
+
+const PRIORITY_OPTIONS: OptionItem<EventPriority>[] = [
+  { value: 'baja', label: 'Baja', tone: 'baja' },
+  { value: 'media', label: 'Media', tone: 'media' },
+  { value: 'alta', label: 'Alta', tone: 'alta' },
+];
 
 export default function NewEventScreen() {
   const router = useRouter();
+  const theme = useTheme();
+  const toast = useToast();
+
+  const titleInputRef = useRef<TextInput>(null);
+  const descInputRef = useRef<TextInput>(null);
+
   const params = useLocalSearchParams<{
     id?: string;
     initialTitle?: string;
@@ -48,14 +64,12 @@ export default function NewEventScreen() {
   }>();
 
   const isEditing = Boolean(params.id);
-  const scheme = useColorScheme();
-  const colorScheme = scheme === 'dark' ? 'dark' : 'light';
-  const palette = Colors[colorScheme];
 
+  // Inicialización con fecha local para evitar saltar al día siguiente (SCRUM-106)
   const [values, setValues] = useState<CreateEventValues>(() => ({
     title: params.initialTitle ?? '',
     description: params.initialDescription ?? '',
-    date: params.initialDate ?? new Date().toISOString().split('T')[0],
+    date: params.initialDate ?? formatDateIso(new Date()),
     time: params.initialTime ?? '12:00',
     category: (params.initialCategory as EventCategory) ?? 'personal',
     priority: (params.initialPriority as EventPriority) ?? 'media',
@@ -88,7 +102,15 @@ export default function NewEventScreen() {
 
     const clientErrors = validateCreateEvent(values);
     setErrors(clientErrors);
-    if (Object.keys(clientErrors).length > 0) return;
+
+    if (Object.keys(clientErrors).length > 0) {
+      if (clientErrors.title) {
+        titleInputRef.current?.focus();
+      } else if (clientErrors.description) {
+        descInputRef.current?.focus();
+      }
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -109,17 +131,19 @@ export default function NewEventScreen() {
 
       if (isEditing && params.id) {
         await updateEvent(params.id, payload, token);
-        router.replace({
-          pathname: '/(app)',
-          params: { updated: '1', eventTitle: values.title.trim() },
+        toast.show({
+          tone: 'success',
+          message: `Evento «${values.title.trim()}» actualizado exitosamente`,
         });
       } else {
         await createEvent(payload, token);
-        router.replace({
-          pathname: '/(app)',
-          params: { created: '1', eventTitle: values.title.trim() },
+        toast.show({
+          tone: 'success',
+          message: `Evento «${values.title.trim()}» creado exitosamente`,
         });
       }
+
+      router.replace('/(app)/' as any);
     } catch (error) {
       const failure = describeCreateEventError(error);
       setErrors(failure.fields);
@@ -127,286 +151,173 @@ export default function NewEventScreen() {
       if (failure.message === 'El evento ya no existe') {
         setIsNotFound(true);
       }
+      if (failure.fields.title) {
+        titleInputRef.current?.focus();
+      } else if (failure.fields.description) {
+        descInputRef.current?.focus();
+      }
     } finally {
       setSubmitting(false);
     }
   }
 
+  const titleLength = values.title.length;
+  const descLength = (values.description ?? '').length;
+
   return (
-    <ThemedView style={styles.flex}>
-      <SafeAreaView style={styles.flex}>
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView
-            contentContainerStyle={styles.content}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}>
-            <View style={styles.header}>
-              <ThemedText type="subtitle">
-                {isEditing ? 'Editar evento' : 'Nuevo evento'}
-              </ThemedText>
-              <ThemedText type="small" style={styles.subtitle}>
-                {isEditing
-                  ? 'Modifica los datos de tu evento en tu agenda'
-                  : 'Organiza tus actividades diarias en tu agenda'}
-              </ThemedText>
-            </View>
+    <Screen
+      scrollable={true}
+      header={
+        <View style={styles.header}>
+          <IconButton
+            name="back"
+            accessibilityLabel="Regresar a la agenda"
+            size={22}
+            onPress={() => router.back()}
+          />
+          <ThemedText style={[styles.headerTitle, { color: theme.text }]}>
+            {isEditing ? 'Editar evento' : 'Nuevo evento'}
+          </ThemedText>
+          <View style={styles.headerSpacer} />
+        </View>
+      }
+      contentContainerStyle={styles.contentContainer}>
+      {/* Banner general de error si falla la validación del servidor */}
+      {generalError && (
+        <View style={styles.bannerWrapper}>
+          <Banner
+            tone="error"
+            title="No se pudo guardar el evento"
+            message={generalError}
+            actionLabel={isNotFound ? 'Volver a la agenda' : undefined}
+            onAction={isNotFound ? () => router.replace('/(app)/' as any) : undefined}
+          />
+        </View>
+      )}
 
-            {generalError && (
-              <View
-                style={[
-                  styles.generalErrorBox,
-                  { backgroundColor: palette.error + '1A', borderColor: palette.error },
-                ]}>
-                <ThemedText style={{ color: palette.error }}>{generalError}</ThemedText>
-                {isNotFound && (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => router.replace('/(app)')}
-                    style={{ marginTop: 8 }}>
-                    <ThemedText style={{ color: palette.primary, fontWeight: '600' }}>
-                      ← Volver al calendario
-                    </ThemedText>
-                  </Pressable>
-                )}
-              </View>
-            )}
+      {/* Título con contador 0/100 y foco guiado */}
+      <TextField
+        ref={titleInputRef}
+        label="Título del evento"
+        required
+        value={values.title}
+        onChangeText={update('title')}
+        error={errors.title}
+        helperText={`${titleLength}/100`}
+        placeholder="Ej. Reunión de planeación"
+        maxLength={100}
+        returnKeyType="next"
+        onSubmitEditing={() => descInputRef.current?.focus()}
+      />
 
-            <TextField
-              label="Título del evento"
-              value={values.title}
-              onChangeText={update('title')}
-              error={errors.title}
-              placeholder="Ej. Reunión de planeación"
-              maxLength={100}
-              returnKeyType="next"
-            />
+      {/* Descripción con contador 0/500 */}
+      <TextField
+        ref={descInputRef}
+        label="Descripción (opcional)"
+        value={values.description ?? ''}
+        onChangeText={update('description')}
+        error={errors.description}
+        helperText={`${descLength}/500`}
+        placeholder="Detalles adicionales del evento..."
+        multiline
+        numberOfLines={3}
+        maxLength={500}
+      />
 
-            <TextField
-              label="Descripción (opcional)"
-              value={values.description ?? ''}
-              onChangeText={update('description')}
-              error={errors.description}
-              placeholder="Detalles adicionales del evento..."
-              multiline
-              numberOfLines={3}
-              maxLength={500}
-            />
+      {/* Selectores de Fecha y Hora con DateTimePicker nativo */}
+      <View style={styles.row}>
+        <View style={styles.halfCol}>
+          <DateField
+            label="Fecha"
+            required
+            value={values.date}
+            onChange={(dateIso) => update('date')(dateIso)}
+            error={errors.date}
+          />
+        </View>
+        <View style={styles.halfCol}>
+          <TimeField
+            label="Hora"
+            required
+            value={values.time}
+            onChange={(time) => update('time')(time)}
+            error={errors.time}
+          />
+        </View>
+      </View>
 
-            <View style={styles.row}>
-              <View style={styles.halfCol}>
-                <TextField
-                  label="Fecha (YYYY-MM-DD)"
-                  value={values.date}
-                  onChangeText={update('date')}
-                  error={errors.date}
-                  placeholder="2026-10-25"
-                />
-              </View>
-              <View style={styles.halfCol}>
-                <TextField
-                  label="Hora (HH:mm)"
-                  value={values.time}
-                  onChangeText={update('time')}
-                  error={errors.time}
-                  placeholder="14:30"
-                />
-              </View>
-            </View>
+      {/* Selector de Categoría accesible */}
+      <OptionSelector
+        label="Categoría"
+        required
+        options={CATEGORY_OPTIONS}
+        value={values.category}
+        onChange={(cat) => setCategory(cat as EventCategory)}
+        error={errors.category}
+      />
 
-            {/* Selector de Categoría */}
-            <View style={styles.section}>
-              <ThemedText type="default" style={styles.sectionTitle}>
-                Categoría
-              </ThemedText>
-              <View style={styles.chipsContainer}>
-                {EVENT_CATEGORIES.map((cat) => {
-                  const isSelected = values.category === cat;
-                  return (
-                    <Pressable
-                      key={cat}
-                      onPress={() => setCategory(cat)}
-                      style={[
-                        styles.chip,
-                        {
-                          backgroundColor: isSelected
-                            ? palette.primary
-                            : palette.backgroundElement,
-                          borderColor: isSelected
-                            ? palette.primary
-                            : palette.backgroundSelected,
-                        },
-                      ]}>
-                      <ThemedText
-                        style={[
-                          styles.chipText,
-                          {
-                            color: isSelected
-                              ? '#ffffff'
-                              : palette.text,
-                            fontWeight: isSelected ? '700' : '500',
-                          },
-                        ]}>
-                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                      </ThemedText>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              {errors.category && (
-                <ThemedText style={[styles.fieldError, { color: palette.error }]}>
-                  {errors.category}
-                </ThemedText>
-              )}
-            </View>
+      {/* Selector de Prioridad accesible */}
+      <OptionSelector
+        label="Prioridad"
+        required
+        options={PRIORITY_OPTIONS}
+        value={values.priority}
+        onChange={(pri) => setPriority(pri as EventPriority)}
+        error={errors.priority}
+      />
 
-            {/* Selector de Prioridad */}
-            <View style={styles.section}>
-              <ThemedText type="default" style={styles.sectionTitle}>
-                Prioridad
-              </ThemedText>
-              <View style={styles.chipsContainer}>
-                {EVENT_PRIORITIES.map((pri) => {
-                  const isSelected = values.priority === pri;
-                  const priorityColor =
-                    pri === 'alta'
-                      ? '#E53935'
-                      : pri === 'media'
-                        ? '#FB8C00'
-                        : '#43A047';
-
-                  return (
-                    <Pressable
-                      key={pri}
-                      onPress={() => setPriority(pri)}
-                      style={[
-                        styles.chip,
-                        {
-                          backgroundColor: isSelected
-                            ? priorityColor
-                            : palette.backgroundElement,
-                          borderColor: isSelected
-                            ? priorityColor
-                            : palette.backgroundSelected,
-                        },
-                      ]}>
-                      <ThemedText
-                        style={[
-                          styles.chipText,
-                          {
-                            color: isSelected
-                              ? '#ffffff'
-                              : palette.text,
-                            fontWeight: isSelected ? '700' : '500',
-                          },
-                        ]}>
-                        {pri.toUpperCase()}
-                      </ThemedText>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              {errors.priority && (
-                <ThemedText style={[styles.fieldError, { color: palette.error }]}>
-                  {errors.priority}
-                </ThemedText>
-              )}
-            </View>
-
-            <View style={styles.actions}>
-              <Button
-                title={isEditing ? 'Guardar cambios' : 'Crear evento'}
-                onPress={handleSubmit}
-                loading={submitting}
-              />
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.back()}
-                disabled={submitting}
-                style={({ pressed }) => [
-                  styles.cancelButton,
-                  {
-                    borderColor: palette.backgroundSelected,
-                    opacity: submitting ? 0.5 : pressed ? 0.8 : 1,
-                  },
-                ]}>
-                <ThemedText type="default">Cancelar</ThemedText>
-              </Pressable>
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </ThemedView>
+      {/* Botones de acción */}
+      <View style={styles.buttonActions}>
+        <Button
+          title={isEditing ? 'Guardar cambios' : 'Crear evento'}
+          variant="primary"
+          size="md"
+          loading={submitting}
+          onPress={handleSubmit}
+        />
+        <Button
+          title="Cancelar"
+          variant="ghost"
+          size="md"
+          disabled={submitting}
+          onPress={() => router.back()}
+        />
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  content: {
-    padding: Spacing.four,
-    gap: Spacing.three,
-    maxWidth: MaxContentWidth,
-    width: '100%',
-    alignSelf: 'center',
+  contentContainer: {
+    paddingVertical: 16,
   },
   header: {
-    gap: Spacing.one,
-    marginBottom: Spacing.two,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  subtitle: {
-    opacity: 0.7,
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
   },
-  generalErrorBox: {
-    padding: Spacing.three,
-    borderRadius: 8,
-    borderWidth: 1,
+  headerSpacer: {
+    width: 44, // Equilibra el espacio del IconButton
+  },
+  bannerWrapper: {
+    marginBottom: 16,
   },
   row: {
     flexDirection: 'row',
-    gap: Spacing.two,
+    gap: 12,
   },
   halfCol: {
     flex: 1,
   },
-  section: {
-    gap: Spacing.one,
-    marginTop: Spacing.one,
-  },
-  sectionTitle: {
-    fontWeight: '600',
-  },
-  chipsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-    marginTop: Spacing.one,
-  },
-  chip: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  chipText: {
-    fontSize: 14,
-  },
-  fieldError: {
-    fontSize: 12,
-    marginTop: Spacing.half,
-  },
-  actions: {
-    gap: Spacing.two,
-    marginTop: Spacing.three,
-  },
-  cancelButton: {
-    minHeight: 48,
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
+  buttonActions: {
+    gap: 12,
+    marginTop: 20,
+    marginBottom: 32,
   },
 });

@@ -5,6 +5,8 @@ import {
   formatOptionAccessibilityLabel,
   resolveOptionItemStyle,
 } from '@/components/option-selector-model';
+
+export type { OptionItem };
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 

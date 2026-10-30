@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -25,19 +25,22 @@ export type TextFieldProps = TextInputProps & {
 };
 
 /** Input accesible con etiqueta, estado de foco guiado, mensaje de ayuda/error y multilínea. */
-export function TextField({
-  label,
-  error,
-  helperText,
-  required = false,
-  secureTextEntry,
-  multiline = false,
-  numberOfLines,
-  style,
-  onFocus,
-  onBlur,
-  ...rest
-}: TextFieldProps) {
+export const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
+  {
+    label,
+    error,
+    helperText,
+    required = false,
+    secureTextEntry,
+    multiline = false,
+    numberOfLines,
+    style,
+    onFocus,
+    onBlur,
+    ...rest
+  },
+  ref
+) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
@@ -83,6 +86,7 @@ export function TextField({
           },
         ]}>
         <TextInput
+          ref={ref}
           accessibilityLabel={`${label}${required ? ', campo obligatorio' : ''}`}
           accessibilityHint={error ?? helperText}
           placeholderTextColor={theme.textSecondary}
@@ -128,7 +132,7 @@ export function TextField({
       ) : null}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
