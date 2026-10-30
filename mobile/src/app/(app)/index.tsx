@@ -394,6 +394,14 @@ export default function HomeScreen() {
                 icon="calendar"
                 title="No hay eventos para este día"
                 message="No tienes actividades registradas para la fecha seleccionada."
+                quickActionIcon="add"
+                quickActionLabel="Crear evento para este día"
+                onQuickAction={() => {
+                  router.push({
+                    pathname: '/(app)/events/new',
+                    params: { initialDate: selectedDate },
+                  } as any);
+                }}
                 actionLabel="Ver todos los eventos del mes"
                 onAction={() => setViewMode('all')}
               />
@@ -417,8 +425,9 @@ export default function HomeScreen() {
               icon="calendar"
               title="Sin eventos en este mes"
               message="Aprovecha tu mes libre o programa una nueva actividad en tu agenda."
-              actionLabel="Programar un evento"
-              onAction={() => router.push('/(app)/events/new' as any)}
+              quickActionIcon="add"
+              quickActionLabel="Crear primer evento"
+              onQuickAction={() => router.push('/(app)/events/new' as any)}
             />
           ) : (
             <View style={styles.dayGroupsContainer}>

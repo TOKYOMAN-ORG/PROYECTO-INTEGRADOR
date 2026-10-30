@@ -163,3 +163,23 @@ export function groupEventsByDate(events: Event[], todayIso: string): DayGroup[]
   });
 }
 
+/**
+ * Ajusta una hora en formato 'HH:MM' sumando o restando una cantidad de minutos,
+ * manteniendo el formato de 24 horas ('00:00' - '23:59').
+ */
+export function adjustTimeMinutes(currentTime: string, deltaMinutes: number): string {
+  const parts = currentTime.split(':');
+  let hours = parseInt(parts[0] || '12', 10);
+  let minutes = parseInt(parts[1] || '00', 10);
+  if (Number.isNaN(hours)) hours = 12;
+  if (Number.isNaN(minutes)) minutes = 0;
+
+  let totalMinutes = hours * 60 + minutes + deltaMinutes;
+  const dayMinutes = 24 * 60;
+  totalMinutes = ((totalMinutes % dayMinutes) + dayMinutes) % dayMinutes;
+
+  const newH = Math.floor(totalMinutes / 60);
+  const newM = totalMinutes % 60;
+  return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+}
+

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  adjustTimeMinutes,
   formatDateIso,
   formatDisplayDate,
   formatDayGroupHeader,
@@ -169,6 +170,30 @@ describe('calendar-utils', () => {
     assert.equal(groups[1].isToday, false);
     assert.equal(groups[1].events.length, 1);
     assert.equal(groups[1].events[0].id, '1');
+  });
+
+  describe('adjustTimeMinutes', () => {
+    it('suma minutos correctamente', () => {
+      assert.equal(adjustTimeMinutes('12:00', 30), '12:30');
+      assert.equal(adjustTimeMinutes('12:45', 15), '13:00');
+    });
+
+    it('resta minutos correctamente', () => {
+      assert.equal(adjustTimeMinutes('12:00', -30), '11:30');
+      assert.equal(adjustTimeMinutes('12:15', -15), '12:00');
+    });
+
+    it('gestiona desbordamiento hacia adelante (medianoche)', () => {
+      assert.equal(adjustTimeMinutes('23:45', 30), '00:15');
+    });
+
+    it('gestiona desbordamiento hacia atrás (medianoche)', () => {
+      assert.equal(adjustTimeMinutes('00:15', -30), '23:45');
+    });
+
+    it('maneja valores no válidos cayendo a 12:00 seguro', () => {
+      assert.equal(adjustTimeMinutes('', 30), '12:30');
+    });
   });
 });
 

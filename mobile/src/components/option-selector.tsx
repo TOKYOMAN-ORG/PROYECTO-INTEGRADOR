@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { Icon } from '@/components/icon';
 import {
   type OptionItem,
   formatOptionAccessibilityLabel,
@@ -93,7 +94,14 @@ export function OptionSelector<T extends string | number>({
                   transform: [{ scale: pressed && !disabled ? 0.94 : 1 }],
                 },
               ]}>
-              {config.indicatorColor && (
+              {option.icon ? (
+                <Icon
+                  name={option.icon}
+                  size={15}
+                  color={config.textColor}
+                  style={styles.optionIcon}
+                />
+              ) : config.indicatorColor ? (
                 <View
                   style={[
                     styles.indicatorDot,
@@ -102,7 +110,7 @@ export function OptionSelector<T extends string | number>({
                     },
                   ]}
                 />
-              )}
+              ) : null}
               <ThemedText
                 style={[
                   styles.optionText,
@@ -158,6 +166,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 14,
     paddingVertical: 10,
+  },
+  optionIcon: {
+    marginRight: 6,
   },
   indicatorDot: {
     width: 8,

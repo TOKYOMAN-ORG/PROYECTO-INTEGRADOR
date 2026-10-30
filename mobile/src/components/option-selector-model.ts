@@ -1,11 +1,13 @@
 import { Radius, type ColorTheme } from '../constants/theme.ts';
 import { type BadgeTone, resolveBadgeColors } from './badge-model.ts';
+import type { AppIconName } from './icon-model.ts';
 
 export interface OptionItem<T extends string | number> {
   value: T;
   label: string;
   tone?: BadgeTone;
   hint?: string;
+  icon?: AppIconName;
 }
 
 export interface OptionItemStyleConfig {

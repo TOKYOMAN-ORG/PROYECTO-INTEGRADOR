@@ -1,18 +1,19 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
-import { Platform, StyleSheet, type TextInput, View } from 'react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import { Platform, Pressable, StyleSheet, type TextInput, View } from 'react-native';
 
 import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { DateField } from '@/components/date-field';
-import { IconButton } from '@/components/icon';
+import { Icon, IconButton } from '@/components/icon';
 import { type OptionItem, OptionSelector } from '@/components/option-selector';
 import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
 import { TimeField } from '@/components/time-field';
 import { useToast } from '@/components/toast';
-import { formatDateIso } from '@/features/events/calendar-utils';
+import { Elevation, Radius, Typography } from '@/constants/theme';
+import { adjustTimeMinutes, formatDateIso } from '@/features/events/calendar-utils';
 import {
   type CreateEventField,
   type CreateEventFormErrors,
@@ -28,31 +29,30 @@ import {
   describeCreateEventError,
   updateEvent,
 } from '@/features/events/events-api';
-import { Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getToken } from '@/storage/secure-token-storage';
-import { triggerSuccessHaptic } from '@/utils/haptics';
-import { useSizeClass } from '@/utils/window-size';
+import { triggerLightHaptic, triggerSuccessHaptic } from '@/utils/haptics';
 
 const CATEGORY_OPTIONS: OptionItem<EventCategory>[] = [
-  { value: 'trabajo', label: 'Trabajo', tone: 'trabajo' },
-  { value: 'estudio', label: 'Estudio', tone: 'estudio' },
-  { value: 'personal', label: 'Personal', tone: 'personal' },
-  { value: 'salud', label: 'Salud', tone: 'salud' },
-  { value: 'otro', label: 'Otro', tone: 'otro' },
+  { value: 'trabajo', label: 'Trabajo', tone: 'trabajo', icon: 'briefcase' },
+  { value: 'estudio', label: 'Estudio', tone: 'estudio', icon: 'book' },
+  { value: 'personal', label: 'Personal', tone: 'personal', icon: 'user' },
+  { value: 'salud', label: 'Salud', tone: 'salud', icon: 'heart' },
+  { value: 'otro', label: 'Otro', tone: 'otro', icon: 'tag' },
 ];
 
 const PRIORITY_OPTIONS: OptionItem<EventPriority>[] = [
-  { value: 'baja', label: 'Baja', tone: 'baja' },
-  { value: 'media', label: 'Media', tone: 'media' },
-  { value: 'alta', label: 'Alta', tone: 'alta' },
+  { value: 'baja', label: 'Baja', tone: 'baja', icon: 'flag' },
+  { value: 'media', label: 'Media', tone: 'media', icon: 'flag' },
+  { value: 'alta', label: 'Alta', tone: 'alta', icon: 'flag' },
 ];
+
+const TIME_PRESETS = ['09:00', '12:00', '15:00', '18:00', '20:00'];
 
 export default function NewEventScreen() {
   const router = useRouter();
   const theme = useTheme();
   const toast = useToast();
-  const { isNarrow } = useSizeClass();
 
   const titleInputRef = useRef<TextInput>(null);
   const descInputRef = useRef<TextInput>(null);
@@ -83,6 +83,20 @@ export default function NewEventScreen() {
   const [generalError, setGeneralError] = useState<string>();
   const [isNotFound, setIsNotFound] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Accesos rápidos de fecha calculados una vez por render
+  const quickDates = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const inTwoDays = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
+
+    return [
+      { label: 'Hoy', value: formatDateIso(today) },
+      { label: 'Mañana', value: formatDateIso(tomorrow) },
+      { label: 'En 2 días', value: formatDateIso(inTwoDays) },
+    ];
+  }, []);
 
   const update = (field: CreateEventField) => (text: string) => {
     setValues((prev) => ({ ...prev, [field]: text }));
@@ -213,76 +227,254 @@ export default function NewEventScreen() {
           </View>
         )}
 
-      {/* Título con contador 0/100 y foco guiado */}
-      <TextField
-        ref={titleInputRef}
-        label="Título del evento"
-        required
-        value={values.title}
-        onChangeText={update('title')}
-        error={errors.title}
-        helperText={`${titleLength}/100`}
-        placeholder="Ej. Reunión de planeación"
-        maxLength={100}
-        returnKeyType="next"
-        onSubmitEditing={() => descInputRef.current?.focus()}
-      />
+        {/* Sección 1: Información general (Estilo Apple) */}
+        <View style={styles.sectionCard}>
+          <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+            Información del evento
+          </ThemedText>
+          <View
+            style={[
+              styles.sectionBody,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+              },
+            ]}>
+            {/* Título con contador 0/100 y foco guiado */}
+            <TextField
+              ref={titleInputRef}
+              label="Título del evento"
+              required
+              value={values.title}
+              onChangeText={update('title')}
+              error={errors.title}
+              helperText={`${titleLength}/100`}
+              placeholder="Ej. Reunión de planeación"
+              maxLength={100}
+              returnKeyType="next"
+              onSubmitEditing={() => descInputRef.current?.focus()}
+            />
 
-      {/* Descripción con contador 0/500 */}
-      <TextField
-        ref={descInputRef}
-        label="Descripción (opcional)"
-        value={values.description ?? ''}
-        onChangeText={update('description')}
-        error={errors.description}
-        helperText={`${descLength}/500`}
-        placeholder="Detalles adicionales del evento..."
-        multiline
-        numberOfLines={3}
-        maxLength={500}
-      />
-
-      {/* Selectores de Fecha y Hora con DateTimePicker nativo */}
-      <View style={[styles.row, isNarrow && styles.column]}>
-        <View style={isNarrow ? styles.fullCol : styles.halfCol}>
-          <DateField
-            label="Fecha"
-            required
-            value={values.date}
-            onChange={(dateIso) => update('date')(dateIso)}
-            error={errors.date}
-          />
+            {/* Descripción con contador 0/500 */}
+            <TextField
+              ref={descInputRef}
+              label="Descripción (opcional)"
+              value={values.description ?? ''}
+              onChangeText={update('description')}
+              error={errors.description}
+              helperText={`${descLength}/500`}
+              placeholder="Detalles adicionales del evento..."
+              multiline
+              numberOfLines={3}
+              maxLength={500}
+            />
+          </View>
         </View>
-        <View style={isNarrow ? styles.fullCol : styles.halfCol}>
-          <TimeField
-            label="Hora"
-            required
-            value={values.time}
-            onChange={(time) => update('time')(time)}
-            error={errors.time}
-          />
+
+        {/* Sección 2: Fecha y Horario (Estilo Apple con accesos rápidos) */}
+        <View style={styles.sectionCard}>
+          <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+            Fecha y horario
+          </ThemedText>
+          <View
+            style={[
+              styles.sectionBody,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+              },
+            ]}>
+            {/* Accesos rápidos de fecha */}
+            <View style={styles.quickGroup}>
+              <ThemedText style={[styles.fieldSublabel, { color: theme.textSecondary }]}>
+                Atajos de fecha
+              </ThemedText>
+              <View style={styles.chipsRow}>
+                {quickDates.map((item) => {
+                  const isSelected = values.date === item.value;
+                  return (
+                    <Pressable
+                      key={item.label}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Fijar fecha a ${item.label}`}
+                      accessibilityState={{ selected: isSelected }}
+                      onPress={() => {
+                        triggerLightHaptic();
+                        update('date')(item.value);
+                      }}
+                      style={({ pressed }) => [
+                        styles.chip,
+                        {
+                          backgroundColor: isSelected
+                            ? theme.primary
+                            : theme.isDark
+                            ? 'rgba(255, 255, 255, 0.06)'
+                            : 'rgba(0, 0, 0, 0.04)',
+                          borderColor: isSelected ? theme.primary : theme.border,
+                          transform: [{ scale: pressed ? 0.94 : 1 }],
+                        },
+                      ]}>
+                      <Icon
+                        name="calendar"
+                        size={13}
+                        color={isSelected ? theme.onPrimary : theme.textSecondary}
+                      />
+                      <ThemedText
+                        style={[
+                          styles.chipText,
+                          { color: isSelected ? theme.onPrimary : theme.text },
+                        ]}>
+                        {item.label}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Selector de fecha con DatePicker nativo */}
+            <DateField
+              label="Fecha"
+              required
+              value={values.date}
+              onChange={(dateIso) => update('date')(dateIso)}
+              error={errors.date}
+            />
+
+            {/* Accesos rápidos de hora y ajuste dinámico +/-30m */}
+            <View style={styles.quickGroup}>
+              <ThemedText style={[styles.fieldSublabel, { color: theme.textSecondary }]}>
+                Horarios sugeridos y ajuste rápido
+              </ThemedText>
+              <View style={styles.chipsRow}>
+                {TIME_PRESETS.map((preset) => {
+                  const isSelected = values.time === preset;
+                  return (
+                    <Pressable
+                      key={preset}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Fijar hora a ${preset}`}
+                      accessibilityState={{ selected: isSelected }}
+                      onPress={() => {
+                        triggerLightHaptic();
+                        update('time')(preset);
+                      }}
+                      style={({ pressed }) => [
+                        styles.chip,
+                        {
+                          backgroundColor: isSelected
+                            ? theme.primary
+                            : theme.isDark
+                            ? 'rgba(255, 255, 255, 0.06)'
+                            : 'rgba(0, 0, 0, 0.04)',
+                          borderColor: isSelected ? theme.primary : theme.border,
+                          transform: [{ scale: pressed ? 0.94 : 1 }],
+                        },
+                      ]}>
+                      <Icon
+                        name="clock"
+                        size={13}
+                        color={isSelected ? theme.onPrimary : theme.textSecondary}
+                      />
+                      <ThemedText
+                        style={[
+                          styles.chipText,
+                          { color: isSelected ? theme.onPrimary : theme.text },
+                        ]}>
+                        {preset}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+                {/* Botones de ajuste +/- 30 minutos */}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Restar 30 minutos a la hora actual"
+                  onPress={() => {
+                    triggerLightHaptic();
+                    update('time')(adjustTimeMinutes(values.time, -30));
+                  }}
+                  style={({ pressed }) => [
+                    styles.chip,
+                    styles.stepperChip,
+                    {
+                      backgroundColor: theme.isDark
+                        ? 'rgba(255, 255, 255, 0.08)'
+                        : 'rgba(0, 0, 0, 0.05)',
+                      borderColor: theme.border,
+                      transform: [{ scale: pressed ? 0.94 : 1 }],
+                    },
+                  ]}>
+                  <ThemedText style={[styles.chipText, { color: theme.text }]}>-30m</ThemedText>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Sumar 30 minutos a la hora actual"
+                  onPress={() => {
+                    triggerLightHaptic();
+                    update('time')(adjustTimeMinutes(values.time, 30));
+                  }}
+                  style={({ pressed }) => [
+                    styles.chip,
+                    styles.stepperChip,
+                    {
+                      backgroundColor: theme.isDark
+                        ? 'rgba(255, 255, 255, 0.08)'
+                        : 'rgba(0, 0, 0, 0.05)',
+                      borderColor: theme.border,
+                      transform: [{ scale: pressed ? 0.94 : 1 }],
+                    },
+                  ]}>
+                  <ThemedText style={[styles.chipText, { color: theme.text }]}>+30m</ThemedText>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Selector de hora con TimePicker nativo */}
+            <TimeField
+              label="Hora"
+              required
+              value={values.time}
+              onChange={(time) => update('time')(time)}
+              error={errors.time}
+            />
+          </View>
         </View>
-      </View>
 
-      {/* Selector de Categoría accesible */}
-      <OptionSelector
-        label="Categoría"
-        required
-        options={CATEGORY_OPTIONS}
-        value={values.category}
-        onChange={(cat) => setCategory(cat as EventCategory)}
-        error={errors.category}
-      />
+        {/* Sección 3: Clasificación (Categoría con iconos vectoriales y Prioridad) */}
+        <View style={styles.sectionCard}>
+          <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+            Clasificación
+          </ThemedText>
+          <View
+            style={[
+              styles.sectionBody,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+              },
+            ]}>
+            {/* Selector de Categoría accesible con iconos de Lucide */}
+            <OptionSelector
+              label="Categoría"
+              required
+              options={CATEGORY_OPTIONS}
+              value={values.category}
+              onChange={(cat) => setCategory(cat as EventCategory)}
+              error={errors.category}
+            />
 
-      {/* Selector de Prioridad accesible */}
-      <OptionSelector
-        label="Prioridad"
-        required
-        options={PRIORITY_OPTIONS}
-        value={values.priority}
-        onChange={(pri) => setPriority(pri as EventPriority)}
-        error={errors.priority}
-      />
+            {/* Selector de Prioridad accesible con iconos */}
+            <OptionSelector
+              label="Prioridad"
+              required
+              options={PRIORITY_OPTIONS}
+              value={values.priority}
+              onChange={(pri) => setPriority(pri as EventPriority)}
+              error={errors.priority}
+            />
+          </View>
+        </View>
 
         {/* Botones de acción */}
         <View style={styles.buttonActions}>
@@ -308,13 +500,13 @@ export default function NewEventScreen() {
 
 const styles = StyleSheet.create({
   contentContainer: {
-    paddingBottom: 24,
+    paddingBottom: 32,
   },
   formCard: {
     width: '100%',
     maxWidth: 580,
     alignSelf: 'center',
-    gap: 16,
+    gap: 20,
   },
   header: {
     flexDirection: 'row',
@@ -341,22 +533,54 @@ const styles = StyleSheet.create({
   bannerWrapper: {
     width: '100%',
   },
-  row: {
+  sectionCard: {
+    gap: 8,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginLeft: 4,
+  },
+  sectionBody: {
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    padding: 16,
+    gap: 14,
+    ...Elevation.sm,
+  },
+  quickGroup: {
+    gap: 8,
+  },
+  fieldSublabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  chipsRow: {
     flexDirection: 'row',
-    gap: 12,
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  column: {
-    flexDirection: 'column',
-    gap: 12,
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    gap: 6,
+    minHeight: 34,
   },
-  halfCol: {
-    flex: 1,
+  stepperChip: {
+    paddingHorizontal: 10,
   },
-  fullCol: {
-    width: '100%',
+  chipText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   buttonActions: {
     gap: 10,
-    marginTop: 8,
+    marginTop: 4,
   },
 });
