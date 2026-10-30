@@ -1,7 +1,7 @@
 import '../global.css';
 
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
-import { ActivityIndicator, StyleSheet, useColorScheme } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
@@ -10,6 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/features/auth/auth-context';
+import { AppThemeProvider, useThemePreference } from '@/features/theme/theme-context';
 import { ConfirmProvider } from '@/components/confirm-dialog';
 import { ToastProvider } from '@/components/toast';
 import { installGlobalErrorHandlers } from '@/utils/global-error-handler';
@@ -19,19 +20,21 @@ installGlobalErrorHandlers();
 export default function RootLayout() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <ToastProvider>
-          <ConfirmProvider>
-            <RootNavigator />
-          </ConfirmProvider>
-        </ToastProvider>
-      </AuthProvider>
+      <AppThemeProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <ConfirmProvider>
+              <RootNavigator />
+            </ConfirmProvider>
+          </ToastProvider>
+        </AuthProvider>
+      </AppThemeProvider>
     </ErrorBoundary>
   );
 }
 
 function RootNavigator() {
-  const colorScheme = useColorScheme();
+  const { scheme: colorScheme } = useThemePreference();
   const { status, sessionError, retryRestore } = useAuth();
 
   // Mientras se restaura la sesión no se monta ningún navegador: evita el parpadeo de Login o de la pila privada.

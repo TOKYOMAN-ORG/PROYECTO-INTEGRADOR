@@ -6,6 +6,7 @@ import {
   Typography,
   type ColorTheme,
 } from '@/constants/theme';
+import { useThemePreferenceOptional } from '@/features/theme/theme-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export type Theme = ColorTheme & {
@@ -19,7 +20,9 @@ export type Theme = ColorTheme & {
 };
 
 export function useTheme(): Theme {
-  const scheme = useColorScheme();
+  const systemScheme = useColorScheme();
+  const preference = useThemePreferenceOptional();
+  const scheme = preference ? preference.scheme : systemScheme;
   const activeScheme: 'light' | 'dark' = scheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[activeScheme];
 

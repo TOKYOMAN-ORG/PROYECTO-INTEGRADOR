@@ -24,6 +24,7 @@ import {
 import type { Event } from '@/features/events/event-types';
 import { deleteEvent, getEvents } from '@/features/events/events-api';
 import { Elevation, Typography } from '@/constants/theme';
+import { useThemePreference } from '@/features/theme/theme-context';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, NetworkError } from '@/services/http-client';
 import { getToken } from '@/storage/secure-token-storage';
@@ -39,6 +40,7 @@ export default function HomeScreen() {
   }>();
   const { signOut } = useAuth();
   const theme = useTheme();
+  const { toggle: toggleTheme } = useThemePreference();
   const sizeConfig = useSizeClass();
   const confirm = useConfirm();
   const toast = useToast();
@@ -252,6 +254,12 @@ export default function HomeScreen() {
             </ThemedText>
           </View>
           <View style={styles.headerActions}>
+            <IconButton
+              name={theme.isDark ? 'sun' : 'moon'}
+              accessibilityLabel={theme.isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+              size={20}
+              onPress={toggleTheme}
+            />
             <IconButton
               name="logout"
               accessibilityLabel="Cerrar sesión"

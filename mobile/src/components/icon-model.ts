@@ -16,7 +16,9 @@ export type AppIconName =
   | 'chevronRight'
   | 'error'
   | 'refresh'
-  | 'empty';
+  | 'empty'
+  | 'sun'
+  | 'moon';
 
 export interface IconDefinition {
   ios: string;
@@ -133,6 +135,18 @@ export const IconRegistry: Record<AppIconName, IconDefinition> = {
     android: 'inbox',
     webFallback: '📭',
     defaultLabel: 'Vacío',
+  },
+  sun: {
+    ios: 'sun.max',
+    android: 'light_mode',
+    webFallback: '☀️',
+    defaultLabel: 'Tema claro',
+  },
+  moon: {
+    ios: 'moon',
+    android: 'dark_mode',
+    webFallback: '🌙',
+    defaultLabel: 'Tema oscuro',
   },
 };
 

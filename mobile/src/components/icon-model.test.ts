@@ -26,6 +26,8 @@ describe('Icon Registry (SCRUM-97)', () => {
     'error',
     'refresh',
     'empty',
+    'sun',
+    'moon',
   ];
 
   for (const name of expectedIcons) {
