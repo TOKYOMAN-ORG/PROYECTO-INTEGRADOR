@@ -1,52 +1,112 @@
-import { ActivityIndicator, Pressable, StyleSheet, type PressableProps } from 'react-native';
+import type { ReactNode } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  View,
+  type PressableProps,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
+import {
+  getButtonConfig,
+  type ButtonSize,
+  type ButtonVariant,
+} from '@/components/button-model';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
-// Fondo fijo con texto blanco (contraste ≈ 5:1) para que se lea igual en tema claro y oscuro.
-const BUTTON_COLOR = '#1A6FD0';
-
-export type ButtonProps = Omit<PressableProps, 'children'> & {
-  title: string;
-  /** Muestra un indicador de carga y deshabilita el botón, evitando el doble envío. */
+export type ButtonProps = Omit<PressableProps, 'children' | 'style'> & {
+  title?: string;
+  children?: ReactNode;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  icon?: ReactNode;
+  iconPosition?: 'left' | 'right';
   loading?: boolean;
+  style?: StyleProp<ViewStyle>;
 };
 
-export function Button({ title, loading = false, disabled, style, ...rest }: ButtonProps) {
+export function Button({
+  title,
+  children,
+  variant = 'primary',
+  size = 'md',
+  icon,
+  iconPosition = 'left',
+  loading = false,
+  disabled,
+  style,
+  hitSlop: customHitSlop,
+  ...rest
+}: ButtonProps) {
+  const theme = useTheme();
+  const config = getButtonConfig(theme, variant, size);
   const inactive = disabled || loading;
+
+  const resolvedHitSlop = customHitSlop ?? config.hitSlop;
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ disabled: !!inactive, busy: loading }}
       disabled={inactive}
-      style={(state) => [
-        styles.button,
-        { backgroundColor: BUTTON_COLOR, opacity: inactive ? 0.6 : state.pressed ? 0.85 : 1 },
-        typeof style === 'function' ? style(state) : style,
+      hitSlop={resolvedHitSlop}
+      style={({ pressed }) => [
+        styles.base,
+        {
+          backgroundColor: config.backgroundColor,
+          borderColor: config.borderColor,
+          borderWidth: config.borderWidth,
+          minHeight: config.minHeight,
+          paddingHorizontal: config.paddingHorizontal,
+          borderRadius: config.borderRadius,
+          opacity: inactive ? 0.55 : pressed ? 0.85 : 1,
+        },
+        style,
       ]}
       {...rest}>
       {loading ? (
-        <ActivityIndicator color="#ffffff" />
+        <ActivityIndicator color={config.textColor} size={size === 'sm' ? 'small' : 'small'} />
       ) : (
-        <ThemedText type="default" style={styles.title}>
-          {title}
-        </ThemedText>
+        <View style={styles.contentRow}>
+          {icon && iconPosition === 'left' && <View style={styles.iconLeft}>{icon}</View>}
+          {title ? (
+            <ThemedText
+              type={size === 'sm' ? 'smallBold' : 'default'}
+              style={[styles.text, { color: config.textColor }]}>
+              {title}
+            </ThemedText>
+          ) : (
+            children
+          )}
+          {icon && iconPosition === 'right' && <View style={styles.iconRight}>{icon}</View>}
+        </View>
       )}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  button: {
-    minHeight: 48,
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.four,
+  base: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: {
-    color: '#ffffff',
-    fontWeight: 600,
+  contentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconLeft: {
+    marginRight: Spacing.two,
+  },
+  iconRight: {
+    marginLeft: Spacing.two,
+  },
+  text: {
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

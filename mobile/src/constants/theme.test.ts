@@ -1,23 +1,14 @@
 import assert from 'node:assert/strict';
-import test, { describe, mock } from 'node:test';
+import test, { describe } from 'node:test';
 
-mock.module('react-native', {
-  exports: {
-    Platform: {
-      OS: 'android',
-      select: (spec: Record<string, unknown>) => spec.default ?? spec.android ?? spec.ios ?? spec.web,
-    },
-  },
-});
-
-const {
+import {
   Colors,
   Duration,
   Elevation,
   Radius,
   Typography,
   contrastRatio,
-} = await import('./theme.ts');
+} from './theme.ts';
 
 describe('contrastRatio (SCRUM-94)', () => {
   test('devuelve 21 para negro sobre blanco y 1 para blanco sobre blanco', () => {

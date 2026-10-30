@@ -1,9 +1,9 @@
-/**
- * Sistema de diseño de SecurePlan Mobile:
- * Tokens semánticos de color, tipografía, espaciado, radios y sombras.
- */
-
-import { Platform } from 'react-native';
+export const Fonts = {
+  sans: 'system-ui',
+  serif: 'serif',
+  rounded: 'normal',
+  mono: 'monospace',
+} as const;
 
 export const Colors = {
   light: {
@@ -242,26 +242,6 @@ export const Duration = {
   slow: 400,
 } as const;
 
-export const Fonts = Platform.select({
-  ios: {
-    sans: 'system-ui',
-    serif: 'ui-serif',
-    rounded: 'ui-rounded',
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
 
 export const Spacing = {
   half: 2,
