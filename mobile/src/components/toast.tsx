@@ -2,10 +2,12 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Banner } from '@/components/banner';
@@ -15,6 +17,8 @@ import {
   type ToastMessage,
   type ToastTone,
 } from '@/components/toast-model';
+
+import { Duration } from '@/constants/theme';
 
 interface ShowToastOptions {
   tone?: ToastTone;
@@ -35,6 +39,49 @@ export function useToast(): ToastContextType {
     throw new Error('useToast debe usarse dentro de un ToastProvider');
   }
   return context;
+}
+
+function ToastItem({
+  toast,
+  onDismiss,
+}: {
+  toast: ToastMessage;
+  onDismiss: () => void;
+}) {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: Duration.fast,
+      useNativeDriver: true,
+    }).start();
+  }, [anim]);
+
+  return (
+    <Animated.View
+      pointerEvents="auto"
+      style={[
+        styles.toastWrapper,
+        {
+          opacity: anim,
+          transform: [
+            {
+              translateY: anim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [-8, 0],
+              }),
+            },
+          ],
+        },
+      ]}>
+      <Banner
+        tone={toast.tone}
+        message={toast.message}
+        onClose={onDismiss}
+      />
+    </Animated.View>
+  );
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -71,16 +118,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           },
         ]}>
         {toasts.map((toast) => (
-          <View
+          <ToastItem
             key={toast.id}
-            pointerEvents="auto"
-            style={styles.toastWrapper}>
-            <Banner
-              tone={toast.tone}
-              message={toast.message}
-              onClose={() => dismiss(toast.id)}
-            />
-          </View>
+            toast={toast}
+            onDismiss={() => dismiss(toast.id)}
+          />
         ))}
       </View>
     </ToastContext.Provider>

@@ -26,6 +26,7 @@ import { deleteEvent, getEvents } from '@/features/events/events-api';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, NetworkError } from '@/services/http-client';
 import { getToken } from '@/storage/secure-token-storage';
+import { triggerLightHaptic, triggerSuccessHaptic } from '@/utils/haptics';
 import { useSizeClass } from '@/utils/window-size';
 
 export default function HomeScreen() {
@@ -126,6 +127,7 @@ export default function HomeScreen() {
   );
 
   function handleSelectDay(dateIso: string) {
+    triggerLightHaptic();
     setSelectedDate(dateIso);
     const parts = dateIso.split('-');
     const cellYear = parseInt(parts[0], 10);
@@ -186,6 +188,7 @@ export default function HomeScreen() {
         return;
       }
       await deleteEvent(event.id, token);
+      triggerSuccessHaptic();
       setSelectedEvent(null);
       setEvents((prev) => prev.filter((e) => e.id !== event.id));
       toast.show({

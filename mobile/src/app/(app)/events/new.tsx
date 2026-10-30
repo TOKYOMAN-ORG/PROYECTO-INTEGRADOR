@@ -30,6 +30,7 @@ import {
 } from '@/features/events/events-api';
 import { useTheme } from '@/hooks/use-theme';
 import { getToken } from '@/storage/secure-token-storage';
+import { triggerSuccessHaptic } from '@/utils/haptics';
 import { useSizeClass } from '@/utils/window-size';
 
 const CATEGORY_OPTIONS: OptionItem<EventCategory>[] = [
@@ -133,12 +134,14 @@ export default function NewEventScreen() {
 
       if (isEditing && params.id) {
         await updateEvent(params.id, payload, token);
+        triggerSuccessHaptic();
         toast.show({
           tone: 'success',
           message: `Evento «${values.title.trim()}» actualizado exitosamente`,
         });
       } else {
         await createEvent(payload, token);
+        triggerSuccessHaptic();
         toast.show({
           tone: 'success',
           message: `Evento «${values.title.trim()}» creado exitosamente`,
