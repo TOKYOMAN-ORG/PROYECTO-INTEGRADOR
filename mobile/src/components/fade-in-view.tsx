@@ -1,7 +1,9 @@
 import React, { useEffect, useState, type ReactNode } from 'react';
-import { Animated, Easing, type StyleProp, type ViewStyle } from 'react-native';
+import { Animated, Easing, Platform, type StyleProp, type ViewStyle } from 'react-native';
 
 import { getStaggerDelay } from '@/features/theme/theme-reveal';
+
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 export interface FadeInViewProps {
   children: ReactNode;
@@ -23,7 +25,7 @@ export function FadeInView({ children, index = 0, distance = 14, duration = 320,
       duration,
       delay: getStaggerDelay(index),
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
     });
     animation.start();
     return () => animation.stop();

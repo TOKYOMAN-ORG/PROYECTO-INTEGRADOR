@@ -89,8 +89,12 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
             style={[
               styles.dialogCard,
               {
-                backgroundColor: theme.surface,
-                borderColor: theme.border,
+                backgroundColor: theme.isDark
+                  ? 'rgba(17, 24, 39, 0.85)'
+                  : 'rgba(255, 255, 255, 0.88)',
+                borderColor: theme.isDark
+                  ? 'rgba(255, 255, 255, 0.18)'
+                  : 'rgba(15, 23, 42, 0.1)',
               },
             ]}>
             <ThemedText style={[styles.title, { color: theme.text }]}>
@@ -130,10 +134,17 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(2, 6, 23, 0.48)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+      } as any,
+      default: {},
+    }),
   },
   backdropDismiss: {
     position: 'absolute',
@@ -150,6 +161,15 @@ const styles = StyleSheet.create({
     padding: 24,
     ...Elevation.lg,
     zIndex: 1,
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(26px) saturate(190%)',
+        WebkitBackdropFilter: 'blur(26px) saturate(190%)',
+        boxShadow:
+          'inset 0 1px 2px rgba(255, 255, 255, 0.35), 0 18px 40px rgba(0, 0, 0, 0.28)',
+      } as any,
+      default: {},
+    }),
   },
   title: {
     fontSize: 18,

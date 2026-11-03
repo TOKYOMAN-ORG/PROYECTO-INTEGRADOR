@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Animated, Easing, Platform, StyleSheet, View } from 'react-native';
+import { Animated, Easing, Platform, StyleSheet } from 'react-native';
 
 import type { ResolvedScheme } from './theme-preference';
 
@@ -14,75 +14,63 @@ export interface RevealState {
 
 interface Props {
   reveal: RevealState;
-  /** Se invoca a mitad de la expansión para aplicar el nuevo tema debajo del círculo */
+  /** Se invoca cuando la esfera cubre la pantalla para conmutar el tema debajo sin parpadeos */
   onCovered: () => void;
-  /** Se invoca al terminar la animación para desmontar la capa */
+  /** Se invoca al terminar la disolución para desmontar la capa */
   onDone: () => void;
 }
 
-const KEYFRAMES_STYLE_ID = 'secureplan-theme-ripple-keyframes';
-
-function ensureWebKeyframes() {
-  if (typeof document === 'undefined') return;
-  let style = document.getElementById(KEYFRAMES_STYLE_ID) as HTMLStyleElement | null;
-  if (!style) {
-    style = document.createElement('style');
-    style.id = KEYFRAMES_STYLE_ID;
-    document.head.appendChild(style);
-  }
-  style.textContent = `
-    @keyframes themeRippleExpand {
-      0% {
-        clip-path: circle(0px at var(--ripple-x) var(--ripple-y));
-        opacity: 1;
-      }
-      80% {
-        clip-path: circle(var(--ripple-r) at var(--ripple-x) var(--ripple-y));
-        opacity: 1;
-      }
-      100% {
-        clip-path: circle(var(--ripple-r) at var(--ripple-x) var(--ripple-y));
-        opacity: 0;
-      }
-    }
-  `;
-}
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 export function ThemeRevealOverlay({ reveal, onCovered, onDone }: Props) {
   const isWeb = Platform.OS === 'web';
-  const [scale] = useState(() => new Animated.Value(0.001));
+  const [scale] = useState(() => new Animated.Value(0.005));
   const [opacity] = useState(() => new Animated.Value(1));
+  const [waveScale] = useState(() => new Animated.Value(0.01));
+  const [waveOpacity] = useState(() => new Animated.Value(0.95));
+
+  const isDarkTarget = reveal.target === 'dark';
 
   useEffect(() => {
-    if (isWeb) {
-      ensureWebKeyframes();
-      // En web con CSS clip-path: cambio de tema a los 420ms (el círculo ya cubre >85% de la pantalla)
-      const coverTimer = setTimeout(onCovered, 420);
-      const doneTimer = setTimeout(onDone, 700);
+    scale.setValue(0.005);
+    opacity.setValue(1);
+    waveScale.setValue(0.01);
+    waveOpacity.setValue(0.95);
 
-      return () => {
-        clearTimeout(coverTimer);
-        clearTimeout(doneTimer);
-      };
-    }
-
-    // En nativo (iOS / Android) usando Animated
-    const animation = Animated.sequence([
+    const sphereExpand = Animated.sequence([
       Animated.timing(scale, {
-        toValue: 1,
-        duration: 560,
-        easing: Easing.bezier(0.25, 1, 0.5, 1),
-        useNativeDriver: true,
+        toValue: 1.02,
+        duration: 520,
+        easing: Easing.bezier(0.22, 1, 0.36, 1),
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(opacity, {
         toValue: 0,
-        duration: 180,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
+        duration: 240,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
     ]);
 
-    const coverTimer = setTimeout(onCovered, 420);
+    const shockwave = Animated.parallel([
+      Animated.timing(waveScale, {
+        toValue: 1.08,
+        duration: 680,
+        easing: Easing.bezier(0.16, 1, 0.3, 1),
+        useNativeDriver: USE_NATIVE_DRIVER,
+      }),
+      Animated.timing(waveOpacity, {
+        toValue: 0,
+        duration: 680,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: USE_NATIVE_DRIVER,
+      }),
+    ]);
+
+    const animation = Animated.parallel([sphereExpand, shockwave]);
+
+    // A los 400ms la curva cubic-bezier(0.22, 1, 0.36, 1) ya alcanzó >92% del radio total
+    const coverTimer = setTimeout(onCovered, 400);
     animation.start(({ finished }) => {
       if (finished) onDone();
     });
@@ -94,61 +82,90 @@ export function ThemeRevealOverlay({ reveal, onCovered, onDone }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reveal.id]);
 
-  if (isWeb) {
-    const webStyle: Record<string, string | number> = {
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      width: '100vw',
-      height: '100vh',
-      backgroundColor: reveal.backgroundColor,
-      zIndex: 999999,
-      pointerEvents: 'none',
-      '--ripple-x': `${reveal.x}px`,
-      '--ripple-y': `${reveal.y}px`,
-      '--ripple-r': `${reveal.radius}px`,
-      animation: 'themeRippleExpand 700ms cubic-bezier(0.25, 1, 0.5, 1) forwards',
-    };
+  const diameter = reveal.radius * 2;
 
-    return (
-      <View
+  // Estética diferencial para Oscuro -> Claro (halo solar cálido + cristal celeste) vs Claro -> Oscuro (halo cian/índigo)
+  const rimBorderColor = isDarkTarget
+    ? 'rgba(56, 189, 248, 0.65)'
+    : 'rgba(251, 191, 36, 0.85)';
+  const shockwaveBorderColor = isDarkTarget
+    ? 'rgba(255, 255, 255, 0.55)'
+    : 'rgba(14, 165, 233, 0.55)';
+  const sphereGlowWeb = isDarkTarget
+    ? '0 0 60px 18px rgba(56, 189, 248, 0.45), inset 0 0 40px 10px rgba(99, 102, 241, 0.30)'
+    : '0 0 70px 24px rgba(251, 191, 36, 0.50), 0 0 32px 8px rgba(56, 189, 248, 0.35), inset 0 0 45px 12px rgba(255, 255, 255, 0.90)';
+  const waveGlowWeb = isDarkTarget
+    ? '0 0 42px 12px rgba(56, 189, 248, 0.55), inset 0 0 24px 4px rgba(255, 255, 255, 0.35)'
+    : '0 0 48px 14px rgba(251, 191, 36, 0.65), inset 0 0 28px 6px rgba(255, 255, 255, 0.85)';
+
+  const basePositionStyle = {
+    position: (isWeb ? 'fixed' : 'absolute') as 'absolute',
+    width: diameter,
+    height: diameter,
+    borderRadius: reveal.radius,
+    left: reveal.x - reveal.radius,
+    top: reveal.y - reveal.radius,
+  };
+
+  return (
+    <>
+      <Animated.View
         pointerEvents="none"
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
-        style={webStyle as any}
+        style={[
+          styles.sphere,
+          basePositionStyle,
+          {
+            backgroundColor: reveal.backgroundColor,
+            borderWidth: 2.5,
+            borderColor: rimBorderColor,
+            opacity,
+            transform: [{ scale }],
+          },
+          isWeb
+            ? ({
+                boxShadow: sphereGlowWeb,
+                willChange: 'transform, opacity',
+              } as any)
+            : null,
+        ]}
       />
-    );
-  }
-
-  const diameter = reveal.radius * 2;
-
-  return (
-    <Animated.View
-      pointerEvents="none"
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      style={[
-        styles.circle,
-        {
-          width: diameter,
-          height: diameter,
-          borderRadius: reveal.radius,
-          left: reveal.x - reveal.radius,
-          top: reveal.y - reveal.radius,
-          backgroundColor: reveal.backgroundColor,
-          opacity,
-          transform: [{ scale }],
-        },
-      ]}
-    />
+      <Animated.View
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={[
+          styles.shockwave,
+          basePositionStyle,
+          {
+            borderWidth: 2,
+            borderColor: shockwaveBorderColor,
+            backgroundColor: isDarkTarget
+              ? 'rgba(56, 189, 248, 0.06)'
+              : 'rgba(255, 255, 255, 0.18)',
+            opacity: waveOpacity,
+            transform: [{ scale: waveScale }],
+          },
+          isWeb
+            ? ({
+                boxShadow: waveGlowWeb,
+                backdropFilter: 'blur(8px) saturate(180%)',
+                WebkitBackdropFilter: 'blur(8px) saturate(180%)',
+                willChange: 'transform, opacity',
+              } as any)
+            : null,
+        ]}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  circle: {
-    position: 'absolute',
+  sphere: {
+    zIndex: 999998,
+  },
+  shockwave: {
     zIndex: 999999,
   },
 });

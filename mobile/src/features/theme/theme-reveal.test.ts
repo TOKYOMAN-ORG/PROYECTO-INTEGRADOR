@@ -25,6 +25,16 @@ describe('theme-reveal', () => {
     assert.deepEqual(getPressOrigin({ nativeEvent: { clientX: 5, clientY: 6 } }), { x: 5, y: 6 });
   });
 
+  test('getPressOrigin cae al centro de currentTarget.getBoundingClientRect si no hay coordenadas de puntero', () => {
+    const mockEvent = {
+      nativeEvent: { pageX: 0, pageY: 0 },
+      currentTarget: {
+        getBoundingClientRect: () => ({ left: 100, top: 20, width: 40, height: 40 }),
+      },
+    };
+    assert.deepEqual(getPressOrigin(mockEvent), { x: 120, y: 40 });
+  });
+
   test('getPressOrigin devuelve undefined si no hay coordenadas válidas', () => {
     assert.equal(getPressOrigin(undefined), undefined);
     assert.equal(getPressOrigin({}), undefined);

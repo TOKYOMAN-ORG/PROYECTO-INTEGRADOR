@@ -1,11 +1,12 @@
 import { Link, useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { Platform, StyleSheet, type TextInput, View } from 'react-native';
 
 import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
+import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { ThemedText } from '@/components/themed-text';
 import { describeRegisterError, register } from '@/features/auth/auth-api';
 import {
@@ -14,7 +15,7 @@ import {
   type RegisterValues,
   validateRegister,
 } from '@/features/auth/register-validation';
-import { Typography } from '@/constants/theme';
+import { Elevation, Radius, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 const EMPTY_VALUES: RegisterValues = { name: '', email: '', password: '', confirmPassword: '' };
@@ -86,6 +87,11 @@ export default function RegisterScreen() {
   return (
     <Screen
       scrollable={true}
+      header={
+        <View style={styles.topBar}>
+          <ThemeToggleButton size={20} />
+        </View>
+      }
       contentContainerStyle={styles.content}>
       {/* Encabezado con identidad de marca */}
       <View style={styles.brandHeader}>
@@ -97,7 +103,18 @@ export default function RegisterScreen() {
         </ThemedText>
       </View>
 
-      <View style={styles.formCard}>
+      <View
+        style={[
+          styles.formCard,
+          {
+            backgroundColor: theme.isDark
+              ? 'rgba(17, 24, 39, 0.72)'
+              : 'rgba(255, 255, 255, 0.78)',
+            borderColor: theme.isDark
+              ? 'rgba(255, 255, 255, 0.14)'
+              : 'rgba(15, 23, 42, 0.08)',
+          },
+        ]}>
         <ThemedText style={[styles.formTitle, { color: theme.text }]}>
           Crear cuenta
         </ThemedText>
@@ -197,15 +214,21 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
   content: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingVertical: 32,
+    paddingVertical: 24,
     paddingHorizontal: 20,
   },
   brandHeader: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 28,
   },
   brandTitle: {
     fontSize: Typography.display.fontSize,
@@ -222,6 +245,19 @@ const styles = StyleSheet.create({
     maxWidth: 440,
     alignSelf: 'center',
     gap: 16,
+    padding: 24,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    ...Elevation.sm,
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(22px) saturate(185%)',
+        WebkitBackdropFilter: 'blur(22px) saturate(185%)',
+        boxShadow:
+          'inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 12px 32px rgba(0, 0, 0, 0.08)',
+      } as any,
+      default: {},
+    }),
   },
   formTitle: {
     fontSize: Typography.title.fontSize,

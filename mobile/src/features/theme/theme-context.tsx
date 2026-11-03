@@ -88,7 +88,7 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
 
       AccessibilityInfo.isReduceMotionEnabled()
         .then((reduced) => (reduced ? setPreference(target) : startOverlay()))
-        .catch(startOverlay);
+        .catch(() => startOverlay());
     },
     [reveal, scheme, setPreference],
   );

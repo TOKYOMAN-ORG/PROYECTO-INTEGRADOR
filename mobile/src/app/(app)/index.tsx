@@ -15,7 +15,14 @@ import { LoadingState } from '@/components/loading-state';
 import { MonthCalendar } from '@/components/month-calendar';
 import { Screen } from '@/components/screen';
 import { SegmentedControl } from '@/components/segmented-control';
-import type { SegmentedOption } from '@/components/segmented-control-model';
+import {
+  CATEGORY_FILTER_OPTIONS,
+  filterEventsByCategory,
+  getCategoryCounts,
+  type CategoryFilter,
+  type SegmentedOption,
+} from '@/components/segmented-control-model';
+import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { ThemedText } from '@/components/themed-text';
 import { useToast } from '@/components/toast';
 import { useAuth } from '@/features/auth/auth-context';
@@ -30,8 +37,6 @@ import {
 import type { Event } from '@/features/events/event-types';
 import { deleteEvent, getEvents } from '@/features/events/events-api';
 import { Elevation, Radius, Typography } from '@/constants/theme';
-import { useThemePreference } from '@/features/theme/theme-context';
-import { getPressOrigin } from '@/features/theme/theme-reveal';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, NetworkError } from '@/services/http-client';
 import { getToken } from '@/storage/secure-token-storage';
@@ -49,7 +54,6 @@ export default function HomeScreen() {
   }>();
   const { signOut } = useAuth();
   const theme = useTheme();
-  const { toggle: toggleTheme } = useThemePreference();
   const sizeConfig = useSizeClass();
   const confirm = useConfirm();
   const toast = useToast();
@@ -62,6 +66,7 @@ export default function HomeScreen() {
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<string>(todayIso);
   const [viewMode, setViewMode] = useState<AgendaViewMode>('all');
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('todas');
 
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -134,14 +139,30 @@ export default function HomeScreen() {
     return record;
   }, [events]);
 
+  const filteredEvents = useMemo(
+    () => filterEventsByCategory(events, categoryFilter),
+    [events, categoryFilter]
+  );
+
   const selectedDateEvents = useMemo(
-    () => getEventsForDate(events, selectedDate),
-    [events, selectedDate]
+    () => getEventsForDate(filteredEvents, selectedDate),
+    [filteredEvents, selectedDate]
   );
 
   const dayGroups = useMemo(
-    () => groupEventsByDate(events, todayIso),
-    [events, todayIso]
+    () => groupEventsByDate(filteredEvents, todayIso),
+    [filteredEvents, todayIso]
+  );
+
+  const categoryCounts = useMemo(() => getCategoryCounts(events), [events]);
+
+  const categoryOptions = useMemo<SegmentedOption<CategoryFilter>[]>(
+    () =>
+      CATEGORY_FILTER_OPTIONS.map((opt) => ({
+        ...opt,
+        count: categoryCounts[opt.value],
+      })),
+    [categoryCounts]
   );
 
   const viewModeOptions = useMemo<SegmentedOption<AgendaViewMode>[]>(
@@ -149,7 +170,7 @@ export default function HomeScreen() {
       {
         value: 'all',
         label: 'Todos los eventos',
-        count: events.length,
+        count: filteredEvents.length,
       },
       {
         value: 'day',
@@ -157,7 +178,7 @@ export default function HomeScreen() {
         count: selectedDateEvents.length,
       },
     ],
-    [events.length, selectedDateEvents.length]
+    [filteredEvents.length, selectedDateEvents.length]
   );
 
   const viewModeIcons: Partial<Record<AgendaViewMode, AppIconName>> = {
@@ -287,11 +308,11 @@ export default function HomeScreen() {
             styles.appHeader,
             {
               backgroundColor: theme.isDark
-                ? 'rgba(15, 23, 42, 0.85)'
-                : 'rgba(255, 255, 255, 0.88)',
+                ? 'rgba(11, 15, 25, 0.72)'
+                : 'rgba(255, 255, 255, 0.76)',
               borderBottomColor: theme.isDark
-                ? 'rgba(255, 255, 255, 0.08)'
-                : 'rgba(0, 0, 0, 0.06)',
+                ? 'rgba(255, 255, 255, 0.14)'
+                : 'rgba(15, 23, 42, 0.08)',
             },
           ]}>
           <View style={styles.headerInfo}>
@@ -300,16 +321,11 @@ export default function HomeScreen() {
             </ThemedText>
             <ThemedText
               style={[styles.appSubtitle, { color: theme.textSecondary }]}>
-              Mi agenda
+              Mi agenda inteligente
             </ThemedText>
           </View>
           <View style={styles.headerActions}>
-            <IconButton
-              name={theme.isDark ? 'sun' : 'moon'}
-              accessibilityLabel={theme.isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
-              size={20}
-              onPress={(event) => toggleTheme(getPressOrigin(event))}
-            />
+            <ThemeToggleButton size={20} />
             <IconButton
               name="logout"
               accessibilityLabel="Cerrar sesión"
@@ -322,15 +338,33 @@ export default function HomeScreen() {
       }
       footer={
         <View pointerEvents="box-none" style={styles.fabWrapper}>
-          <Button
-            title="Crear evento"
-            icon="add"
-            variant="primary"
-            size="md"
-            accessibilityLabel="Crear nuevo evento"
-            onPress={() => router.push('/(app)/events/new' as any)}
-            style={styles.fabButton}
-          />
+          <View
+            style={[
+              styles.fabGlassHalo,
+              {
+                backgroundColor: theme.isDark
+                  ? 'rgba(15, 23, 42, 0.58)'
+                  : 'rgba(255, 255, 255, 0.68)',
+                borderColor: theme.isDark
+                  ? 'rgba(255, 255, 255, 0.22)'
+                  : 'rgba(255, 255, 255, 0.92)',
+              },
+            ]}>
+            <Button
+              title="Crear evento"
+              icon="add"
+              variant="primary"
+              size="md"
+              accessibilityLabel="Crear nuevo evento"
+              onPress={() => {
+                router.push({
+                  pathname: '/(app)/events/new',
+                  params: viewMode === 'day' ? { initialDate: selectedDate } : undefined,
+                } as any);
+              }}
+              style={styles.fabButton}
+            />
+          </View>
         </View>
       }
       contentContainerStyle={styles.contentContainer}>
@@ -363,18 +397,27 @@ export default function HomeScreen() {
                   : `Eventos para ${formatDisplayDate(selectedDate)}`}
               </ThemedText>
               <ThemedText style={[styles.sectionCount, { color: theme.textSecondary }]}>
-                ({viewMode === 'all' ? events.length : selectedDateEvents.length})
+                ({viewMode === 'all' ? filteredEvents.length : selectedDateEvents.length})
               </ThemedText>
             </View>
           </View>
 
-          {/* Selector de modo estilo iOS: Todos los eventos vs Día seleccionado */}
+          {/* Selector de modo estilo iOS Liquid Glass: Todos los eventos vs Día seleccionado */}
           <SegmentedControl
             options={viewModeOptions}
             value={viewMode}
             onChange={setViewMode}
             icons={viewModeIcons}
           />
+
+          {/* Filtro rápido por categoría con pastilla Liquid Glass (visible cuando hay eventos en el mes) */}
+          {events.length > 0 && (
+            <SegmentedControl
+              options={categoryOptions}
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+            />
+          )}
 
           {/* Estados: Carga, Error, Vacío o Lista */}
           {loading ? (
@@ -392,18 +435,25 @@ export default function HomeScreen() {
             selectedDateEvents.length === 0 ? (
               <EmptyState
                 icon="calendar"
-                title="No hay eventos para este día"
-                message="No tienes actividades registradas para la fecha seleccionada."
-                quickActionIcon="add"
-                quickActionLabel="Crear evento para este día"
-                onQuickAction={() => {
-                  router.push({
-                    pathname: '/(app)/events/new',
-                    params: { initialDate: selectedDate },
-                  } as any);
+                title={
+                  categoryFilter === 'todas'
+                    ? 'No hay eventos para este día'
+                    : `Sin eventos de «${categoryFilter}» en este día`
+                }
+                message="No tienes actividades registradas con estos criterios para la fecha seleccionada."
+                actionLabel={
+                  categoryFilter !== 'todas'
+                    ? 'Mostrar todas las categorías'
+                    : 'Ver todos los eventos del mes'
+                }
+                actionVariant="outline"
+                onAction={() => {
+                  if (categoryFilter !== 'todas') {
+                    setCategoryFilter('todas');
+                  } else {
+                    setViewMode('all');
+                  }
                 }}
-                actionLabel="Ver todos los eventos del mes"
-                onAction={() => setViewMode('all')}
               />
             ) : (
               <View style={styles.eventsList}>
@@ -425,9 +475,15 @@ export default function HomeScreen() {
               icon="calendar"
               title="Sin eventos en este mes"
               message="Aprovecha tu mes libre o programa una nueva actividad en tu agenda."
-              quickActionIcon="add"
-              quickActionLabel="Crear primer evento"
-              onQuickAction={() => router.push('/(app)/events/new' as any)}
+            />
+          ) : filteredEvents.length === 0 ? (
+            <EmptyState
+              icon="filter"
+              title={`Sin eventos en «${categoryFilter}»`}
+              message="No hay actividades de esta categoría registradas en el mes actual."
+              actionLabel="Mostrar todas las categorías"
+              actionVariant="outline"
+              onAction={() => setCategoryFilter('todas')}
             />
           ) : (
             <View style={styles.dayGroupsContainer}>
@@ -448,7 +504,7 @@ export default function HomeScreen() {
                         styles.dayGroupHeaderToday,
                         {
                           backgroundColor: theme.isDark
-                            ? 'rgba(59, 130, 246, 0.15)'
+                            ? 'rgba(56, 189, 248, 0.14)'
                             : 'rgba(26, 111, 208, 0.08)',
                           borderColor: theme.primary,
                         },
@@ -516,7 +572,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   contentContainer: {
-    paddingBottom: 80, // Espacio para que el FAB no tape el último elemento
+    paddingBottom: 96, // Espacio para que el FAB Liquid Glass no tape el último elemento
   },
   appHeader: {
     flexDirection: 'row',
@@ -524,11 +580,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
     ...Platform.select({
       web: {
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
+        backdropFilter: 'blur(24px) saturate(190%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(190%)',
+        boxShadow:
+          'inset 0 -1px 0 rgba(255, 255, 255, 0.14), 0 4px 20px rgba(0, 0, 0, 0.05)',
       } as any,
       default: {},
     }),
@@ -549,6 +607,7 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -582,8 +641,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
     borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: 'transparent',
@@ -609,8 +668,24 @@ const styles = StyleSheet.create({
     bottom: 24,
     zIndex: 99,
   },
+  fabGlassHalo: {
+    padding: 5,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    ...Elevation.lg,
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(20px) saturate(190%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(190%)',
+        boxShadow:
+          'inset 0 1px 2px rgba(255, 255, 255, 0.45), 0 10px 28px rgba(26, 111, 208, 0.28)',
+      } as any,
+      default: {},
+    }),
+  },
   fabButton: {
-    ...Elevation.md,
+    borderRadius: Radius.full,
+    paddingHorizontal: 20,
   },
   twoColumnWrap: {
     flexDirection: 'row',

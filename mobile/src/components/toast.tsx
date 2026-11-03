@@ -6,7 +6,7 @@ import React, {
   useState,
   type ReactNode,
 } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Animated, Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Banner } from '@/components/banner';
@@ -18,6 +18,8 @@ import {
 } from '@/components/toast-model';
 
 import { Duration, Elevation } from '@/constants/theme';
+
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 interface ShowToastOptions {
   tone?: ToastTone;
@@ -53,7 +55,7 @@ function ToastItem({
     Animated.timing(anim, {
       toValue: 1,
       duration: Duration.fast,
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
     }).start();
   }, [anim]);
 

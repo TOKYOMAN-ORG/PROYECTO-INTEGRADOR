@@ -5,10 +5,12 @@ import { Platform, Pressable, StyleSheet, type TextInput, View } from 'react-nat
 import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { DateField } from '@/components/date-field';
+import { FadeInView } from '@/components/fade-in-view';
 import { Icon, IconButton } from '@/components/icon';
 import { type OptionItem, OptionSelector } from '@/components/option-selector';
 import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
+import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { ThemedText } from '@/components/themed-text';
 import { TimeField } from '@/components/time-field';
 import { useToast } from '@/components/toast';
@@ -193,11 +195,11 @@ export default function NewEventScreen() {
             styles.header,
             {
               backgroundColor: theme.isDark
-                ? 'rgba(15, 23, 42, 0.85)'
-                : 'rgba(255, 255, 255, 0.88)',
+                ? 'rgba(11, 15, 25, 0.72)'
+                : 'rgba(255, 255, 255, 0.76)',
               borderBottomColor: theme.isDark
-                ? 'rgba(255, 255, 255, 0.08)'
-                : 'rgba(0, 0, 0, 0.06)',
+                ? 'rgba(255, 255, 255, 0.14)'
+                : 'rgba(15, 23, 42, 0.08)',
             },
           ]}>
           <IconButton
@@ -209,7 +211,7 @@ export default function NewEventScreen() {
           <ThemedText style={[styles.headerTitle, { color: theme.text }]}>
             {isEditing ? 'Editar evento' : 'Nuevo evento'}
           </ThemedText>
-          <View style={styles.headerSpacer} />
+          <ThemeToggleButton size={20} />
         </View>
       }
       contentContainerStyle={styles.contentContainer}>
@@ -227,63 +229,74 @@ export default function NewEventScreen() {
           </View>
         )}
 
-        {/* Sección 1: Información general (Estilo Apple) */}
-        <View style={styles.sectionCard}>
-          <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-            Información del evento
-          </ThemedText>
-          <View
-            style={[
-              styles.sectionBody,
-              {
-                backgroundColor: theme.surface,
-                borderColor: theme.border,
-              },
-            ]}>
-            {/* Título con contador 0/100 y foco guiado */}
-            <TextField
-              ref={titleInputRef}
-              label="Título del evento"
-              required
-              value={values.title}
-              onChangeText={update('title')}
-              error={errors.title}
-              helperText={`${titleLength}/100`}
-              placeholder="Ej. Reunión de planeación"
-              maxLength={100}
-              returnKeyType="next"
-              onSubmitEditing={() => descInputRef.current?.focus()}
-            />
+        {/* Sección 1: Información general (Estilo Apple Liquid Glass) */}
+        <FadeInView index={0}>
+          <View style={styles.sectionCard}>
+            <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+              Información del evento
+            </ThemedText>
+            <View
+              style={[
+                styles.sectionBody,
+                {
+                  backgroundColor: theme.isDark
+                    ? 'rgba(17, 24, 39, 0.72)'
+                    : 'rgba(255, 255, 255, 0.78)',
+                  borderColor: theme.isDark
+                    ? 'rgba(255, 255, 255, 0.14)'
+                    : 'rgba(15, 23, 42, 0.08)',
+                },
+              ]}>
+              {/* Título con contador 0/100 y foco guiado */}
+              <TextField
+                ref={titleInputRef}
+                label="Título del evento"
+                required
+                value={values.title}
+                onChangeText={update('title')}
+                error={errors.title}
+                helperText={`${titleLength}/100`}
+                placeholder="Ej. Reunión de planeación"
+                maxLength={100}
+                returnKeyType="next"
+                onSubmitEditing={() => descInputRef.current?.focus()}
+              />
 
-            {/* Descripción con contador 0/500 */}
-            <TextField
-              ref={descInputRef}
-              label="Descripción (opcional)"
-              value={values.description ?? ''}
-              onChangeText={update('description')}
-              error={errors.description}
-              helperText={`${descLength}/500`}
-              placeholder="Detalles adicionales del evento..."
-              multiline
-              numberOfLines={3}
-              maxLength={500}
-            />
+              {/* Descripción con contador 0/500 */}
+              <TextField
+                ref={descInputRef}
+                label="Descripción (opcional)"
+                value={values.description ?? ''}
+                onChangeText={update('description')}
+                error={errors.description}
+                helperText={`${descLength}/500`}
+                placeholder="Detalles adicionales del evento..."
+                multiline
+                numberOfLines={3}
+                maxLength={500}
+              />
+            </View>
           </View>
-        </View>
+        </FadeInView>
 
         {/* Sección 2: Fecha y Horario (Estilo Apple con accesos rápidos) */}
-        <View style={styles.sectionCard}>
-          <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-            Fecha y horario
-          </ThemedText>
-          <View
-            style={[
-              styles.sectionBody,
-              {
-                backgroundColor: theme.surface,
-                borderColor: theme.border,
-              },
-            ]}>
+        <FadeInView index={1}>
+          <View style={styles.sectionCard}>
+            <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+              Fecha y horario
+            </ThemedText>
+            <View
+              style={[
+                styles.sectionBody,
+                {
+                  backgroundColor: theme.isDark
+                    ? 'rgba(17, 24, 39, 0.72)'
+                    : 'rgba(255, 255, 255, 0.78)',
+                  borderColor: theme.isDark
+                    ? 'rgba(255, 255, 255, 0.14)'
+                    : 'rgba(15, 23, 42, 0.08)',
+                },
+              ]}>
             {/* Accesos rápidos de fecha */}
             <View style={styles.quickGroup}>
               <ThemedText style={[styles.fieldSublabel, { color: theme.textSecondary }]}>
@@ -438,61 +451,70 @@ export default function NewEventScreen() {
               onChange={(time) => update('time')(time)}
               error={errors.time}
             />
+            </View>
           </View>
-        </View>
+        </FadeInView>
 
         {/* Sección 3: Clasificación (Categoría con iconos vectoriales y Prioridad) */}
-        <View style={styles.sectionCard}>
-          <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-            Clasificación
-          </ThemedText>
-          <View
-            style={[
-              styles.sectionBody,
-              {
-                backgroundColor: theme.surface,
-                borderColor: theme.border,
-              },
-            ]}>
-            {/* Selector de Categoría accesible con iconos de Lucide */}
-            <OptionSelector
-              label="Categoría"
-              required
-              options={CATEGORY_OPTIONS}
-              value={values.category}
-              onChange={(cat) => setCategory(cat as EventCategory)}
-              error={errors.category}
-            />
+        <FadeInView index={2}>
+          <View style={styles.sectionCard}>
+            <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+              Clasificación
+            </ThemedText>
+            <View
+              style={[
+                styles.sectionBody,
+                {
+                  backgroundColor: theme.isDark
+                    ? 'rgba(17, 24, 39, 0.72)'
+                    : 'rgba(255, 255, 255, 0.78)',
+                  borderColor: theme.isDark
+                    ? 'rgba(255, 255, 255, 0.14)'
+                    : 'rgba(15, 23, 42, 0.08)',
+                },
+              ]}>
+              {/* Selector de Categoría accesible con iconos de Lucide */}
+              <OptionSelector
+                label="Categoría"
+                required
+                options={CATEGORY_OPTIONS}
+                value={values.category}
+                onChange={(cat) => setCategory(cat as EventCategory)}
+                error={errors.category}
+              />
 
-            {/* Selector de Prioridad accesible con iconos */}
-            <OptionSelector
-              label="Prioridad"
-              required
-              options={PRIORITY_OPTIONS}
-              value={values.priority}
-              onChange={(pri) => setPriority(pri as EventPriority)}
-              error={errors.priority}
-            />
+              {/* Selector de Prioridad accesible con iconos */}
+              <OptionSelector
+                label="Prioridad"
+                required
+                options={PRIORITY_OPTIONS}
+                value={values.priority}
+                onChange={(pri) => setPriority(pri as EventPriority)}
+                error={errors.priority}
+              />
+            </View>
           </View>
-        </View>
+        </FadeInView>
 
         {/* Botones de acción */}
-        <View style={styles.buttonActions}>
-          <Button
-            title={isEditing ? 'Guardar cambios' : 'Crear evento'}
-            variant="primary"
-            size="md"
-            loading={submitting}
-            onPress={handleSubmit}
-          />
-          <Button
-            title="Cancelar"
-            variant="ghost"
-            size="md"
-            disabled={submitting}
-            onPress={() => router.back()}
-          />
-        </View>
+        <FadeInView index={3}>
+          <View style={styles.buttonActions}>
+            <Button
+              title={isEditing ? 'Guardar cambios' : 'Crear evento'}
+              variant="primary"
+              size="md"
+              loading={submitting}
+              onPress={handleSubmit}
+            />
+            <Button
+              title="Cancelar"
+              variant="ghost"
+              size="md"
+              disabled={submitting}
+              onPress={() => router.back()}
+            />
+          </View>
+        </FadeInView>
       </View>
     </Screen>
   );
@@ -514,11 +536,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
     ...Platform.select({
       web: {
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
+        backdropFilter: 'blur(24px) saturate(190%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(190%)',
+        boxShadow:
+          'inset 0 -1px 0 rgba(255, 255, 255, 0.14), 0 4px 20px rgba(0, 0, 0, 0.05)',
       } as any,
       default: {},
     }),
@@ -526,9 +550,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: Typography.subtitle.fontSize,
     fontWeight: '700',
-  },
-  headerSpacer: {
-    width: 44, // Equilibra el espacio del IconButton
   },
   bannerWrapper: {
     width: '100%',
@@ -544,11 +565,20 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   sectionBody: {
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     borderWidth: 1,
-    padding: 16,
+    padding: 18,
     gap: 14,
     ...Elevation.sm,
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(20px) saturate(185%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(185%)',
+        boxShadow:
+          'inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 8px 24px rgba(0, 0, 0, 0.06)',
+      } as any,
+      default: {},
+    }),
   },
   quickGroup: {
     gap: 8,

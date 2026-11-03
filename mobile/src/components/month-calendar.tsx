@@ -1,5 +1,12 @@
 import React, { useMemo } from 'react';
-import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
 import { Button } from '@/components/button';
 import { IconButton } from '@/components/icon';
@@ -11,7 +18,7 @@ import {
   resolveDayCellStyles,
 } from '@/components/month-calendar-model';
 import { ThemedText } from '@/components/themed-text';
-import { Radius } from '@/constants/theme';
+import { Elevation, Radius } from '@/constants/theme';
 import {
   formatDateIso,
   getCalendarGrid,
@@ -70,8 +77,12 @@ export function MonthCalendar({
       style={[
         styles.container,
         {
-          backgroundColor: theme.surface,
-          borderColor: theme.border,
+          backgroundColor: theme.isDark
+            ? 'rgba(17, 24, 39, 0.72)'
+            : 'rgba(255, 255, 255, 0.78)',
+          borderColor: theme.isDark
+            ? 'rgba(255, 255, 255, 0.14)'
+            : 'rgba(15, 23, 42, 0.08)',
         },
         style,
       ]}>
@@ -155,7 +166,7 @@ export function MonthCalendar({
               onPress={() => onSelectDate(cell.dateString)}
               style={({ pressed }) => [
                 styles.dayCellContainer,
-                { transform: [{ scale: pressed ? 0.92 : 1 }] },
+                { transform: [{ scale: pressed ? 0.88 : isSelected ? 1.04 : 1 }] },
               ]}>
               <View
                 style={[
@@ -165,6 +176,7 @@ export function MonthCalendar({
                     borderColor: cellStyles.borderColor,
                     borderWidth: cellStyles.borderWidth,
                   },
+                  isSelected && styles.dayCellSelectedGlow,
                 ]}>
                 <ThemedText
                   maxFontSizeMultiplier={1.3}
@@ -203,10 +215,20 @@ export function MonthCalendar({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     borderWidth: 1,
-    padding: 16,
+    padding: 18,
     marginBottom: 16,
+    ...Elevation.sm,
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(20px) saturate(185%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(185%)',
+        boxShadow:
+          'inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 8px 24px rgba(0, 0, 0, 0.06)',
+      } as any,
+      default: {},
+    }),
   },
   header: {
     flexDirection: 'row',
@@ -263,6 +285,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  dayCellSelectedGlow: {
+    ...Platform.select({
+      web: {
+        boxShadow:
+          'inset 0 1px 2px rgba(255, 255, 255, 0.45), 0 4px 12px rgba(26, 111, 208, 0.32)',
+      } as any,
+      default: Elevation.sm,
+    }),
   },
   dayText: {
     fontSize: 14,

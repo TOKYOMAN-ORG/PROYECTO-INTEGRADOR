@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Button } from '@/components/button';
+import type { ButtonVariant } from '@/components/button-model';
 import { Icon } from '@/components/icon';
 import type { AppIconName } from '@/components/icon-model';
 import { ThemedText } from '@/components/themed-text';
@@ -13,6 +14,7 @@ export interface EmptyStateProps {
   title: string;
   message?: string;
   actionLabel?: string;
+  actionVariant?: ButtonVariant;
   onAction?: () => void;
   /** Acción directa con botón circular e icono (ej. '+' para crear evento) */
   quickActionIcon?: AppIconName;
@@ -27,6 +29,7 @@ export function EmptyState({
   title,
   message,
   actionLabel,
+  actionVariant,
   onAction,
   quickActionIcon = 'add',
   quickActionLabel,
@@ -97,7 +100,7 @@ export function EmptyState({
         <View style={styles.actionWrapper}>
           <Button
             title={actionLabel}
-            variant={onQuickAction ? 'ghost' : 'primary'}
+            variant={actionVariant ?? (onQuickAction ? 'ghost' : 'outline')}
             size="md"
             onPress={onAction}
           />

@@ -24,13 +24,28 @@ export function clampOrigin(origin: RevealOrigin, width: number, height: number)
 
 /** Extrae las coordenadas de pantalla de un evento de pulsación (nativo o web); `undefined` si no las trae. */
 export function getPressOrigin(event: unknown): RevealOrigin | undefined {
-  const native = (event as { nativeEvent?: Record<string, unknown> } | null)?.nativeEvent;
-  if (!native) return undefined;
-  const x = typeof native.pageX === 'number' ? native.pageX : (native.clientX as number | undefined);
-  const y = typeof native.pageY === 'number' ? native.pageY : (native.clientY as number | undefined);
-  if (typeof x !== 'number' || typeof y !== 'number') return undefined;
-  if (!Number.isFinite(x) || !Number.isFinite(y)) return undefined;
-  return { x, y };
+  const evt = event as {
+    nativeEvent?: Record<string, unknown>;
+    currentTarget?: { getBoundingClientRect?: () => { left: number; top: number; width: number; height: number } };
+  } | null;
+  const native = evt?.nativeEvent;
+  if (native) {
+    const x = typeof native.pageX === 'number' ? native.pageX : (native.clientX as number | undefined);
+    const y = typeof native.pageY === 'number' ? native.pageY : (native.clientY as number | undefined);
+    if (typeof x === 'number' && typeof y === 'number' && Number.isFinite(x) && Number.isFinite(y)) {
+      if (x !== 0 || y !== 0) {
+        return { x, y };
+      }
+    }
+  }
+  if (typeof evt?.currentTarget?.getBoundingClientRect === 'function') {
+    const rect = evt.currentTarget.getBoundingClientRect();
+    return {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    };
+  }
+  return undefined;
 }
 
 /** Retardo escalonado para animar listas: cada elemento entra un poco después, con un tope. */

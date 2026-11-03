@@ -68,6 +68,34 @@ export function Screen({
     <SafeAreaView
       edges={resolvedEdges}
       style={[styles.container, { backgroundColor: theme.background }, style]}>
+      {/* Iluminación ambiental de fondo para refracción de superficies Liquid Glass */}
+      <View
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={styles.ambientContainer}>
+        <View
+          style={[
+            styles.ambientOrbTop,
+            {
+              backgroundColor: theme.isDark
+                ? 'rgba(56, 189, 248, 0.11)'
+                : 'rgba(26, 111, 208, 0.08)',
+            },
+          ]}
+        />
+        <View
+          style={[
+            styles.ambientOrbBottom,
+            {
+              backgroundColor: theme.isDark
+                ? 'rgba(129, 140, 248, 0.09)'
+                : 'rgba(99, 102, 241, 0.06)',
+            },
+          ]}
+        />
+      </View>
+
       <KeyboardAvoidingView
         behavior={config.keyboardBehavior}
         style={styles.keyboardContainer}>
@@ -94,6 +122,43 @@ export function Screen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    overflow: 'hidden',
+  },
+  ambientContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
+  },
+  ambientOrbTop: {
+    position: 'absolute',
+    top: -120,
+    right: -90,
+    width: 340,
+    height: 340,
+    borderRadius: 170,
+    ...Platform.select({
+      web: {
+        filter: 'blur(70px)',
+      } as any,
+      default: {},
+    }),
+  },
+  ambientOrbBottom: {
+    position: 'absolute',
+    bottom: -140,
+    left: -100,
+    width: 380,
+    height: 380,
+    borderRadius: 190,
+    ...Platform.select({
+      web: {
+        filter: 'blur(80px)',
+      } as any,
+      default: {},
+    }),
   },
   keyboardContainer: {
     flex: 1,
@@ -102,11 +167,13 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
     maxWidth: 800,
+    zIndex: 10,
   },
   fixedFooter: {
     width: '100%',
     alignSelf: 'center',
     maxWidth: 800,
+    zIndex: 20,
   },
   scrollContent: {
     flexGrow: 1,
