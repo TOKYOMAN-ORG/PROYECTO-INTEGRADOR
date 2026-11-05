@@ -13,6 +13,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius } from '@/constants/theme';
 import type { Event, EventCategory } from '@/features/events/event-types';
 import { useTheme } from '@/hooks/use-theme';
+import { formatTime12h } from '@/utils/format-time';
 
 export interface EventCardProps {
   event: Event;
@@ -84,7 +85,7 @@ export function EventCard({
               ]}>
               <Icon name="clock" size={14} color={theme.primary} />
               <ThemedText style={[styles.timeText, { color: theme.text }]}>
-                {event.time}
+                {formatTime12h(event.time)}
               </ThemedText>
             </View>
 

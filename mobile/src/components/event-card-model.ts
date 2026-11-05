@@ -1,4 +1,5 @@
 import type { Event, EventCategory, EventPriority } from '../features/events/event-types.ts';
+import { formatTime12h } from '../utils/format-time.ts';
 
 export function getCategoryLabel(category: EventCategory): string {
   switch (category) {
@@ -32,5 +33,5 @@ export function formatEventAccessibilityLabel(event: Event): string {
   const catLabel = getCategoryLabel(event.category).toLowerCase();
   const priLabel = getPriorityLabel(event.priority).toLowerCase();
   const descPart = event.description ? `, ${event.description}` : '';
-  return `${event.title}, ${event.time}, prioridad ${priLabel}, categoría ${catLabel}${descPart}`;
+  return `${event.title}, ${formatTime12h(event.time)}, prioridad ${priLabel}, categoría ${catLabel}${descPart}`;
 }
