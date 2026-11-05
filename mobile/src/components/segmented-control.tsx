@@ -219,6 +219,7 @@ export function SegmentedControl<T extends string = string>({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.scroll}
         contentContainerStyle={styles.scrollContent}>
         {activeLayout && (
           <Animated.View
@@ -274,6 +275,10 @@ const styles = StyleSheet.create({
       } as any,
       default: {},
     }),
+  },
+  // El ScrollView trae `flexGrow: 1` por defecto: en Android se estira hasta ocupar el alto restante de la pantalla.
+  scroll: {
+    flexGrow: 0,
   },
   scrollContent: {
     position: 'relative',

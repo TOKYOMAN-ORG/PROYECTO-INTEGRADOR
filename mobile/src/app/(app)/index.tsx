@@ -114,6 +114,8 @@ export default function HomeScreen() {
         setFetchError(null);
       } catch {
         if (!active) return;
+        // Sin esto, los contadores y puntos del calendario seguirían mostrando los eventos del mes anterior.
+        setEvents([]);
         setFetchError(
           'No se pudieron cargar los eventos. Revisa tu conexión e inténtalo de nuevo.'
         );
