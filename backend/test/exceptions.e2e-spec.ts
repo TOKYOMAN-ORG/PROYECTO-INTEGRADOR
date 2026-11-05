@@ -31,7 +31,7 @@ describe('Global Exception Filter & Error Leaks (SCRUM-75 e2e)', () => {
     };
 
     const brokenRepo = {
-      findAllByUserId: vi.fn().mockImplementation(() => {
+      findByUserIdAndRange: vi.fn().mockImplementation(() => {
         throw new Error('connect ECONNREFUSED 127.0.0.1:5432 at /home/app/src/events.repository.ts:42 (postgres connection pool failure)');
       }),
     };
@@ -96,6 +96,23 @@ describe('Global Exception Filter & Error Leaks (SCRUM-75 e2e)', () => {
     expect(bodyString).not.toMatch(/SyntaxError/i);
     expect(bodyString).not.toMatch(/\/home/i);
     expect(bodyString).not.toMatch(/\.ts/i);
+  });
+
+  it('un cuerpo demasiado grande responde 413 (no 500) sin datos internos', async () => {
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = moduleRef.createNestApplication();
+    configureApp(app);
+    await app.init();
+
+    const response = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: 'a@b.co', password: 'x'.repeat(200_000) })
+      .expect(413);
+
+    // El texto lo pone Nest o, de respaldo, AllExceptionsFilter; lo que importa es el 413 y que no se filtre nada interno.
+    expect(response.body.statusCode).toBe(413);
+    expect(JSON.stringify(response.body)).not.toMatch(/stack|\/home|node_modules|\.ts/i);
+    expect(logErrorSpy).not.toHaveBeenCalled();
   });
 
   it('una ruta inexistente responde 404 sin exponer datos internos ni trazas del sistema', async () => {

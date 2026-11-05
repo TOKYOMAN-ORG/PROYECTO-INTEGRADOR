@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { STATUS_CODES } from 'node:http';
 import type { Request, Response } from 'express';
 
 @Catch()
@@ -64,7 +65,26 @@ export class AllExceptionsFilter implements ExceptionFilter {
       return;
     }
 
-    // 3. Cualquier otra excepción inesperada -> 500 genérico sin datos internos
+    // 3. Otros errores de cliente del body-parser (413 cuerpo demasiado grande, 415 tipo no soportado...):
+    //    `expose` los marca como seguros de mostrar, y se responde solo el texto estándar del estado.
+    if (
+      typeof exception === 'object' &&
+      exception !== null &&
+      'status' in exception &&
+      'expose' in exception &&
+      exception.expose === true &&
+      typeof exception.status === 'number' &&
+      exception.status >= 400 &&
+      exception.status < 500
+    ) {
+      response.status(exception.status).json({
+        statusCode: exception.status,
+        message: STATUS_CODES[exception.status] ?? 'Solicitud inválida',
+      });
+      return;
+    }
+
+    // 4. Cualquier otra excepción inesperada -> 500 genérico sin datos internos
     const stack = exception instanceof Error ? exception.stack : undefined;
     const errorMessage =
       exception instanceof Error

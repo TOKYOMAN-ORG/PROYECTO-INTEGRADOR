@@ -85,6 +85,28 @@ describe('AllExceptionsFilter', () => {
     expect(logErrorSpy).toHaveBeenCalledTimes(1);
   });
 
+  it('conserva el 4xx de un error expuesto del body-parser (413) con solo el texto estándar', () => {
+    const { host, status, json } = createHost('POST', '/api/events');
+    const tooLarge = Object.assign(new Error('request entity too large at /home/app/node_modules/raw-body'), {
+      status: 413,
+      expose: true,
+    });
+
+    filter.catch(tooLarge, host);
+
+    expect(status).toHaveBeenCalledWith(413);
+    expect(json).toHaveBeenCalledWith({ statusCode: 413, message: 'Payload Too Large' });
+    expect(logErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('no expone un error con status 4xx que no esté marcado como expose: sigue siendo 500 genérico', () => {
+    const { host, status } = createHost();
+
+    filter.catch(Object.assign(new Error('interno'), { status: 413 }), host);
+
+    expect(status).toHaveBeenCalledWith(500);
+  });
+
   it('normaliza un SyntaxError de JSON malformado proveniente del body-parser a 400 limpio', () => {
     const { host, status, json } = createHost('POST', '/api/auth/login');
     const syntaxError = new SyntaxError('Unexpected token } in JSON at position 12');
