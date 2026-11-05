@@ -13,6 +13,7 @@ import {
   type EventCategory,
   type EventPriority,
 } from '../event.types.js';
+import { IsCalendarDate } from './is-calendar-date.js';
 
 export class CreateEventDto {
   @Transform(({ value }: { value: unknown }) =>
@@ -35,6 +36,7 @@ export class CreateEventDto {
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {
     message: 'La fecha debe tener el formato YYYY-MM-DD',
   })
+  @IsCalendarDate({ message: 'La fecha no existe en el calendario' })
   date: string;
 
   @IsString({ message: 'La hora es obligatoria' })
