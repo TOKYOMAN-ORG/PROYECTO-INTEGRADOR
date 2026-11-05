@@ -33,7 +33,7 @@ describe('event-card-model', () => {
     const label = formatEventAccessibilityLabel(mockEvent);
     assert.equal(
       label,
-      'Reunión de planeación, 14:30, prioridad alta, categoría trabajo, Revisar backlog del sprint'
+      'Reunión de planeación, 2:30 PM, prioridad alta, categoría trabajo, Revisar backlog del sprint'
     );
   });
 });

@@ -33,6 +33,7 @@ import {
 } from '@/features/events/events-api';
 import { useTheme } from '@/hooks/use-theme';
 import { getToken } from '@/storage/secure-token-storage';
+import { formatTime12h } from '@/utils/format-time';
 import { triggerLightHaptic, triggerSuccessHaptic } from '@/utils/haptics';
 
 const CATEGORY_OPTIONS: OptionItem<EventCategory>[] = [
@@ -366,7 +367,7 @@ export default function NewEventScreen() {
                     <Pressable
                       key={preset}
                       accessibilityRole="button"
-                      accessibilityLabel={`Fijar hora a ${preset}`}
+                      accessibilityLabel={`Fijar hora a ${formatTime12h(preset)}`}
                       accessibilityState={{ selected: isSelected }}
                       onPress={() => {
                         triggerLightHaptic();
@@ -394,7 +395,7 @@ export default function NewEventScreen() {
                           styles.chipText,
                           { color: isSelected ? theme.onPrimary : theme.text },
                         ]}>
-                        {preset}
+                        {formatTime12h(preset)}
                       </ThemedText>
                     </Pressable>
                   );
