@@ -94,6 +94,41 @@ describe('NotificationObserver', () => {
     assert.deepEqual(notification.trigger.date, new Date(2026, 10, 10, 8, 50));
   });
 
+  it('created con la anticipación ya pasada pero el evento aún por empezar avisa a la hora exacta', async () => {
+    const observer = new NotificationObserver(() => NOW);
+    observer.update({ type: 'created', event: makeEvent({ date: '2026-11-01', time: '12:05' }) });
+    await observer.idle();
+
+    assert.deepEqual(scheduled.get('ev-1')?.trigger.date, new Date(2026, 10, 1, 12, 5));
+  });
+
+  it('updated con la anticipación ya pasada también avisa a la hora exacta', async () => {
+    const observer = new NotificationObserver(() => NOW);
+    observer.update({ type: 'created', event: makeEvent() });
+    observer.update({ type: 'updated', event: makeEvent({ date: '2026-11-01', time: '12:03' }) });
+    await observer.idle();
+
+    assert.equal(scheduled.size, 1);
+    assert.deepEqual(scheduled.get('ev-1')?.trigger.date, new Date(2026, 10, 1, 12, 3));
+  });
+
+  it('created de un evento que ya empezó (o empieza justo ahora) no programa nada', async () => {
+    const observer = new NotificationObserver(() => NOW);
+    observer.update({ type: 'created', event: makeEvent({ id: 'justo-ahora', date: '2026-11-01', time: '12:00' }) });
+    observer.update({ type: 'created', event: makeEvent({ id: 'ya-paso', date: '2026-11-01', time: '11:59' }) });
+    await observer.idle();
+
+    assert.equal(scheduled.size, 0);
+  });
+
+  it('loaded no avisa a la hora exacta: un evento cuyo aviso ya sonó no se duplica al recargar', async () => {
+    const observer = new NotificationObserver(() => NOW);
+    observer.update({ type: 'loaded', events: [makeEvent({ date: '2026-11-01', time: '12:05' })] });
+    await observer.idle();
+
+    assert.equal(scheduled.size, 0);
+  });
+
   it('updated reemplaza el recordatorio anterior sin dejar duplicados', async () => {
     const observer = new NotificationObserver(() => NOW);
     observer.update({ type: 'created', event: makeEvent() });
@@ -139,14 +174,6 @@ describe('NotificationObserver', () => {
 
     assert.deepEqual([...scheduled.keys()].sort(), ['futuro', 'ya-programado']);
     assert.equal(scheduled.get('ya-programado')?.content.title, 'Original');
-  });
-
-  it('created de un evento cuyo aviso ya pasó no programa nada', async () => {
-    const observer = new NotificationObserver(() => NOW);
-    observer.update({ type: 'created', event: makeEvent({ date: '2026-11-01', time: '12:05' }) });
-    await observer.idle();
-
-    assert.equal(scheduled.size, 0);
   });
 
   it('sin permiso concedido no programa nada y no lanza', async () => {

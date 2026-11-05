@@ -23,6 +23,7 @@ import { Elevation, Radius } from '@/constants/theme';
 import { formatDisplayDate } from '@/features/events/calendar-utils';
 import type { Event } from '@/features/events/event-types';
 import { useTheme } from '@/hooks/use-theme';
+import { formatTime12h } from '@/utils/format-time';
 import { useSizeClass } from '@/utils/window-size';
 
 export interface EventDetailModalProps {
@@ -133,7 +134,7 @@ export function EventDetailModal({
                 <Icon name="clock" size={16} color={theme.textSecondary} />
                 <ThemedText
                   style={[styles.metaText, { color: theme.textSecondary }]}>
-                  {event.time}
+                  {formatTime12h(event.time)}
                 </ThemedText>
               </View>
 

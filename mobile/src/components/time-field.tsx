@@ -18,6 +18,7 @@ import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
 import { Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { formatTime12h } from '@/utils/format-time';
 
 export interface TimeFieldProps {
   label: string;
@@ -40,7 +41,7 @@ export function TimeField({
   helperText,
   required = false,
   disabled = false,
-  placeholder = '14:30',
+  placeholder = '2:30 PM',
   style,
   testID,
 }: TimeFieldProps) {
@@ -52,7 +53,7 @@ export function TimeField({
   }, [value]);
 
   const accessibilityLabel = useMemo(() => {
-    return formatTimeAccessibilityLabel(label, value || placeholder);
+    return formatTimeAccessibilityLabel(label, value ? formatTime12h(value) : placeholder);
   }, [label, value, placeholder]);
 
   const handlePress = () => {
@@ -121,7 +122,7 @@ export function TimeField({
               color: value ? theme.text : theme.textSecondary,
             },
           ]}>
-          {value || placeholder}
+          {value ? formatTime12h(value) : placeholder}
         </ThemedText>
 
         {Platform.OS === 'web' && !disabled && (
@@ -150,7 +151,7 @@ export function TimeField({
         <DateTimePicker
           value={parsedDate}
           mode="time"
-          is24Hour={true}
+          is24Hour={false}
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           onChange={handleNativeChange}
         />
