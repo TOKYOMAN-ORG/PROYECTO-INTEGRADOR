@@ -45,6 +45,12 @@ describe('CreateEventDto', () => {
     ).rejects.toThrow();
   });
 
+  it.each(['2026-13-45', '2026-02-30'])('rechaza la fecha inexistente %s con 400 (no 500 de la base)', async (date) => {
+    await expect(
+      pipe.transform({ ...validPayload, date }, { type: 'body', metatype: CreateEventDto }),
+    ).rejects.toThrow();
+  });
+
   it('rechaza si el título está vacío o supera 100 caracteres', async () => {
     await expect(
       pipe.transform(

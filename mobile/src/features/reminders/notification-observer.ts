@@ -10,17 +10,7 @@
  * Sin permiso concedido no programa nada. Los cambios se procesan en orden y ningún fallo sale del observer.
  */
 
-let NotificationsModule: typeof import('expo-notifications') | null = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  NotificationsModule = require('expo-notifications');
-} catch (error) {
-  console.warn('[reminders] expo-notifications no disponible en este entorno', error);
-}
-
-function getNotifications() {
-  return NotificationsModule;
-}
+import * as Notifications from 'expo-notifications';
 
 import type { Event } from '../events/event-types.ts';
 import type { EventChange, EventObserver } from '../events/events-subject.ts';
@@ -50,64 +40,46 @@ export class NotificationObserver implements EventObserver {
   }
 
   private async handle(change: EventChange): Promise<void> {
-    const Notifications = getNotifications();
-    if (!Notifications) return;
-    try {
-      switch (change.type) {
-        case 'created':
-        case 'updated':
-          await cancelReminder(change.event.id);
-          if (await ensureNotificationPermission()) await this.schedule(change.event);
-          return;
-        case 'deleted':
-          await cancelReminder(change.id);
-          return;
-        case 'loaded': {
-          if (!(await ensureNotificationPermission())) return;
-          const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-          const pending = new Set(scheduled.map((notification: any) => notification.identifier));
-          for (const event of change.events) {
-            if (!pending.has(event.id)) await this.schedule(event);
-          }
-          return;
+    switch (change.type) {
+      case 'created':
+      case 'updated':
+        await cancelReminder(change.event.id);
+        if (await ensureNotificationPermission()) await this.schedule(change.event);
+        return;
+      case 'deleted':
+        await cancelReminder(change.id);
+        return;
+      case 'loaded': {
+        if (!(await ensureNotificationPermission())) return;
+        const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+        const pending = new Set(scheduled.map((notification) => notification.identifier));
+        for (const event of change.events) {
+          if (!pending.has(event.id)) await this.schedule(event);
         }
+        return;
       }
-    } catch (error) {
-      console.warn('No se pudo actualizar un recordatorio', error);
     }
   }
 
   private async schedule(event: Event): Promise<void> {
-    const Notifications = getNotifications();
-    if (!Notifications) return;
-    try {
-      const date = getReminderDate(event.date, event.time, this.now());
-      if (!date) return;
-      await Notifications.scheduleNotificationAsync({
-        identifier: event.id,
-        content: {
-          title: event.title,
-          body: `Tu evento empieza a las ${event.time.slice(0, 5)}`,
-          data: { eventId: event.id },
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date,
-          channelId: REMINDERS_CHANNEL_ID,
-        },
-      });
-    } catch (error) {
-      console.warn('No se pudo programar el recordatorio', error);
-    }
+    const date = getReminderDate(event.date, event.time, this.now());
+    if (!date) return;
+    await Notifications.scheduleNotificationAsync({
+      identifier: event.id,
+      content: {
+        title: event.title,
+        body: `Tu evento empieza a las ${event.time.slice(0, 5)}`,
+        data: { eventId: event.id },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date,
+        channelId: REMINDERS_CHANNEL_ID,
+      },
+    });
   }
 }
 
 async function cancelReminder(eventId: string): Promise<void> {
-  const Notifications = getNotifications();
-  if (!Notifications) return;
-  try {
-    await Notifications.cancelScheduledNotificationAsync(eventId);
-  } catch (error) {
-    console.warn('No se pudo cancelar el recordatorio', error);
-  }
+  await Notifications.cancelScheduledNotificationAsync(eventId);
 }

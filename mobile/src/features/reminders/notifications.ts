@@ -9,21 +9,9 @@
  * Ninguna función lanza: si el API nativo falla devuelven `false` y la app sigue funcionando sin avisos.
  */
 
-import { Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
 
 export const REMINDERS_CHANNEL_ID = 'reminders';
-
-let NotificationsModule: typeof import('expo-notifications') | null = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  NotificationsModule = require('expo-notifications');
-} catch (error) {
-  console.warn('[reminders] expo-notifications no disponible en este entorno', error);
-}
-
-function getNotifications() {
-  return NotificationsModule;
-}
 
 let configuration: Promise<void> | null = null;
 let permissionRequest: Promise<boolean> | null = null;
@@ -31,8 +19,6 @@ let permissionRequest: Promise<boolean> | null = null;
 /** Configura el handler de primer plano y el canal de Android; idempotente. */
 export function configureNotifications(): Promise<void> {
   configuration ??= (async () => {
-    const Notifications = getNotifications();
-    if (!Notifications) return;
     try {
       Notifications.setNotificationHandler({
         handleNotification: async () => ({
@@ -42,12 +28,10 @@ export function configureNotifications(): Promise<void> {
           shouldSetBadge: false,
         }),
       });
-      if (Platform.OS === 'android' && Notifications.setNotificationChannelAsync) {
-        await Notifications.setNotificationChannelAsync(REMINDERS_CHANNEL_ID, {
-          name: 'Recordatorios',
-          importance: Notifications.AndroidImportance?.HIGH ?? 4,
-        });
-      }
+      await Notifications.setNotificationChannelAsync(REMINDERS_CHANNEL_ID, {
+        name: 'Recordatorios',
+        importance: Notifications.AndroidImportance.HIGH,
+      });
     } catch (error) {
       console.warn('No se pudieron configurar las notificaciones locales', error);
     }
@@ -60,8 +44,6 @@ export function configureNotifications(): Promise<void> {
  * si el usuario lo niega devuelve `false` sin lanzar.
  */
 export async function ensureNotificationPermission(): Promise<boolean> {
-  const Notifications = getNotifications();
-  if (!Notifications) return false;
   try {
     // En Android 13+ el canal debe existir antes de pedir el permiso para que aparezca el diálogo.
     await configureNotifications();
@@ -80,8 +62,6 @@ export async function ensureNotificationPermission(): Promise<boolean> {
 
 /** Cancela todos los recordatorios programados en el dispositivo. No lanza. */
 export async function cancelAllReminders(): Promise<void> {
-  const Notifications = getNotifications();
-  if (!Notifications) return;
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
   } catch (error) {
